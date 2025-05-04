@@ -1,9 +1,9 @@
-import { getAuth } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-export default function OnboardingPage() {
-  const { userId } = getAuth();
+export default async function OnboardingPage() {
+  const { userId } = await auth();
   
   if (!userId) {
     redirect("/sign-in");
