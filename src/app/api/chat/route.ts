@@ -112,7 +112,11 @@ function generateSystemPrompt(profile: Record<string, unknown>, topic: string): 
 }
 
 Where:
-- updatedStory is the updated final version of the user's story, based on the entire conversation history and all previous improvements. Each time the user sends a message, you should generate an improved version of their story that incorporates all feedback and changes so far.
+- updatedStory is the updated final version of the user's story, based on the entire conversation history and all previous improvements. 
+  Each time the user sends a message, you should generate an improved version of their story that incorporates all feedback and changes so far. 
+  Only use the user input to get the update story. Do not use your messages. 
+  Do not add anything to the story besides what user input.
+
 - feedback is your detailed evaluation and suggestions for improvement
 
 In your feedback text, clearly indicate which parts of the STAR framework are present or missing, and provide specific suggestions for improvement.

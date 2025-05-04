@@ -115,6 +115,7 @@ export default function PracticePage() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackData | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showClearDialog, setShowClearDialog] = useState(false);
   
   // Check if topic exists
   const topicName = topicNames[topicId] || "Interview Practice";
@@ -417,6 +418,54 @@ export default function PracticePage() {
     }
   };
 
+  const handleClearStory = async () => {
+    if (!userId || !currentStory) return;
+    
+    setShowClearDialog(true);
+  };
+
+  const handleConfirmClear = async () => {
+    if (!userId || !currentStory) return;
+    
+    setIsSaving(true);
+    try {
+      // Delete the story from the database
+      if (currentStory.id) {
+        await storyApi.deleteStory(currentStory.id);
+      }
+      
+      // Reset state
+      setCurrentStory(null);
+      setFeedback(null);
+      
+      // Reset messages to just the initial question
+      setMessages([
+        {
+          id: "initial",
+          role: "assistant",
+          content: question,
+          timestamp: new Date()
+        }
+      ]);
+      
+      // Add confirmation message
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: "Your story has been cleared. You can start fresh with a new response.",
+          timestamp: new Date()
+        }
+      ]);
+    } catch (error) {
+      console.error("Error clearing story:", error);
+    } finally {
+      setIsSaving(false);
+    }
+    setShowClearDialog(false);
+  };
+
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-7xl">
       <div className="mb-6">
@@ -503,7 +552,7 @@ export default function PracticePage() {
               </form>
               
               {messages.length > 3 && (
-                <div className="mt-4 text-center">
+                <div className="mt-4 text-center flex justify-center space-x-4">
                   <button
                     onClick={handleSaveFinalStory}
                     className="text-sm text-blue-600 hover:underline"
@@ -511,6 +560,15 @@ export default function PracticePage() {
                   >
                     Save as Final Story Version
                   </button>
+                  {currentStory && (
+                    <button
+                      onClick={() => setShowClearDialog(true)}
+                      className="text-sm text-red-600 hover:underline"
+                      disabled={isLoading || isSaving}
+                    >
+                      Start Over
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -659,6 +717,34 @@ export default function PracticePage() {
                 disabled={isSaving}
               >
                 {isSaving ? "Saving..." : "Save Final Version"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear story dialog */}
+      {showClearDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">Clear Story</h3>
+            <p className="mb-4 text-sm text-gray-600">
+              Are you sure you want to clear your story? This action cannot be undone.
+            </p>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowClearDialog(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmClear}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                disabled={isSaving}
+              >
+                {isSaving ? "Clearing..." : "Clear Story"}
               </button>
             </div>
           </div>

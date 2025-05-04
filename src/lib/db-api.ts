@@ -127,6 +127,19 @@ export const storyApi = {
       
     if (error && error.code !== 'PGRST116') throw error;
     return data;
+  },
+  
+  async deleteStory(storyId: string): Promise<void> {
+    const { error } = await supabase
+      .from('stories')
+      .delete()
+      .eq('id', storyId);
+      
+    if (error) {
+      console.error(`Failed to delete story ${storyId}:`, error);
+      throw error;
+    }
+    console.log(`Successfully deleted story ${storyId}`);
   }
 };
 
