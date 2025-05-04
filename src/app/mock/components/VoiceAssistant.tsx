@@ -2,6 +2,7 @@
 import { getToken } from "@/services/openai/token";
 import { useSearchParams } from "next/navigation"; // To get the topic
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image"; // Import Next Image
 
 // Define message type
 interface Message {
@@ -9,16 +10,89 @@ interface Message {
     text: string;
 }
 
-export default function VoiceAssistant() {
+interface VoiceAssistantProps {
+    cameraEnabled: boolean;
+}
+
+export default function VoiceAssistant({ cameraEnabled }: VoiceAssistantProps) {
     const [connected, setConnected] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
+    const [isInterviewerSpeaking, setIsInterviewerSpeaking] = useState(false);
+    const [userStream, setUserStream] = useState<MediaStream | null>(null);
+
     const peerRef = useRef<RTCPeerConnection | null>(null);
     const dataChannelRef = useRef<RTCDataChannel | null>(null);
     const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+
     const searchParams = useSearchParams();
     const topic = searchParams.get("topic") || "a challenging situation"; // Default topic
+
+    // Set up user's camera if enabled
+    useEffect(() => {
+        let mounted = true;
+        let stream: MediaStream | null = null;
+
+        const setupCamera = async () => {
+            if (cameraEnabled && connected) {
+                try {
+                    // Only request camera if we don't already have a stream
+                    if (!userStream) {
+                        stream = await navigator.mediaDevices.getUserMedia({
+                            video: true,
+                        });
+
+                        // Only set the state if component is still mounted
+                        if (mounted) {
+                            setUserStream(stream);
+                            if (videoRef.current) {
+                                videoRef.current.srcObject = stream;
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error accessing camera:", err);
+                }
+            }
+        };
+
+        setupCamera();
+
+        // Cleanup function
+        return () => {
+            mounted = false;
+            // Don't stop the stream here, we'll handle that in the cameraEnabled effect
+        };
+    }, [connected, cameraEnabled, userStream]);
+
+    // Handle camera toggle separately
+    useEffect(() => {
+        if (!cameraEnabled && userStream) {
+            // Stop all video tracks when camera is disabled
+            userStream.getTracks().forEach((track) => {
+                if (track.kind === "video") {
+                    track.stop();
+                }
+            });
+            setUserStream(null);
+            if (videoRef.current) {
+                videoRef.current.srcObject = null;
+            }
+        }
+
+        return () => {
+            // Cleanup on unmount
+            if (userStream) {
+                userStream.getTracks().forEach((track) => {
+                    if (track.kind === "video") {
+                        track.stop();
+                    }
+                });
+            }
+        };
+    }, [cameraEnabled, userStream]);
 
     // Function to initialize WebRTC connection
     async function init() {
@@ -154,6 +228,9 @@ export default function VoiceAssistant() {
                         text: `Tell me about a time you handled ${topic}.`,
                     },
                 ]);
+                // Set interviewer to speaking initially
+                setIsInterviewerSpeaking(true);
+                setTimeout(() => setIsInterviewerSpeaking(false), 5000);
             });
 
             console.log(
@@ -191,17 +268,17 @@ export default function VoiceAssistant() {
                             ];
                         }
                     });
+                    // User is speaking, interviewer is not
+                    setIsInterviewerSpeaking(false);
                     break;
 
                 case "response.text.done": // User's speech transcription complete
-                    // Often the delta covers the full text, but we can finalize here if needed
-                    // The API might not always send a separate 'done' with full text matching the deltas exactly
-                    // console.log("User speech finalized (event data might be minimal):", event);
+                    // User has finished speaking
                     break;
 
                 case "response.audio.delta": // Assistant's audio speech delta (binary)
-                    // This indicates audio is being generated/streamed, handled by ontrack
-                    // console.log('Assistant audio delta received (binary data not shown)');
+                    // Set interviewer as speaking when audio is received
+                    setIsInterviewerSpeaking(true);
                     break;
 
                 case "response.text.delta.assistant": // Assistant's text response delta
@@ -223,6 +300,8 @@ export default function VoiceAssistant() {
                                 : prev;
                         }
                     });
+                    // Interviewer is speaking
+                    setIsInterviewerSpeaking(true);
                     break;
 
                 case "response.done": // Assistant's full response complete
@@ -251,6 +330,8 @@ export default function VoiceAssistant() {
                             return prev; // No change needed
                         });
                     }
+                    // Interviewer is no longer speaking
+                    setIsInterviewerSpeaking(false);
                     console.log("Assistant response done.");
                     break;
 
@@ -326,6 +407,12 @@ export default function VoiceAssistant() {
             }
         }
 
+        // Stop user video stream if active
+        if (userStream) {
+            userStream.getTracks().forEach((track) => track.stop());
+            setUserStream(null);
+        }
+
         // Remove audio player if dynamically added
         if (audioPlayerRef.current) {
             audioPlayerRef.current.pause();
@@ -348,50 +435,143 @@ export default function VoiceAssistant() {
     }, []); // Empty dependency array ensures this runs only on mount and unmount
 
     return (
-        <div className="p-4 border border-gray-300 rounded-md w-full max-w-2xl">
-            {error && <p className="text-red-500 mb-4">Error: {error}</p>}
-
-            {!connected ? (
-                <button
-                    className={`px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed`}
-                    onClick={init}
-                    disabled={loading}
-                >
-                    {loading ? "Connecting..." : "Start Interview"}
-                </button>
-            ) : (
-                <div>
-                    <p className="text-green-600 font-bold flex items-center mb-4">
-                        ✔ Connection established. Speak into your mic…
-                    </p>
-                    <button
-                        className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 mb-4"
-                        onClick={cleanupConnection} // Add a button to disconnect manually
-                        disabled={loading}
+        <div className="w-full h-full flex flex-col relative">
+            {error && (
+                <div className="absolute top-4 left-4 z-50 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded flex items-center shadow-lg">
+                    <svg
+                        className="w-6 h-6 mr-2"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
                     >
-                        End Interview
-                    </button>
+                        <path
+                            fillRule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                            clipRule="evenodd"
+                        />
+                    </svg>
+                    <span>{error}</span>
                 </div>
             )}
 
-            <div className="mt-4 p-4 border border-gray-200 rounded-md bg-gray-50 h-96 overflow-y-auto">
-                <h2 className="font-bold mb-2 text-lg">Conversation:</h2>
-                {messages.map((m, i) => (
+            {/* Main Video Area (User Camera or Placeholder) */}
+            <div className="flex-1 bg-gray-900 flex items-center justify-center relative overflow-hidden">
+                {cameraEnabled && connected ? (
+                    <video
+                        ref={videoRef}
+                        autoPlay
+                        muted
+                        className="w-full h-full object-cover transform -scale-x-100"
+                    ></video>
+                ) : (
+                    <div className="text-center text-gray-400">
+                        {connected ? (
+                            cameraEnabled ? (
+                                <p>Camera loading...</p>
+                            ) : (
+                                <p>Camera is off</p>
+                            )
+                        ) : (
+                            <p>Start the interview to enable your camera</p>
+                        )}
+                    </div>
+                )}
+
+                {/* User label */}
+                <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white py-1 px-3 rounded-full text-sm z-20">
+                    You
+                </div>
+
+                {/* Interviewer Picture-in-Picture */}
+                <div className="absolute bottom-6 right-6 z-20 w-32 h-40 md:w-40 md:h-52 lg:w-48 lg:h-60 border-4 border-gray-700 rounded-lg overflow-hidden shadow-lg">
                     <div
-                        key={i}
-                        className={`mb-2 p-2 rounded-md ${
-                            m.from === "user"
-                                ? "bg-blue-100 text-right"
-                                : "bg-gray-100 text-left"
+                        className={`w-full h-full relative bg-gray-100 ${
+                            isInterviewerSpeaking ? "animate-pulse" : ""
                         }`}
                     >
-                        <strong className="font-semibold">
-                            {m.from === "user" ? "You" : "Interviewer"}:{" "}
-                        </strong>
-                        <span>{m.text}</span>
+                        {/* Glow effect when speaking */}
+                        {isInterviewerSpeaking && (
+                            <div className="absolute -inset-1 bg-blue-500 rounded-lg opacity-50 blur-md"></div>
+                        )}
+                        {/* Interviewer avatar */}
+                        <div
+                            className={`w-full h-full ${
+                                isInterviewerSpeaking
+                                    ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-700"
+                                    : ""
+                            } relative z-10`}
+                        >
+                            <Image
+                                src="/interviewer.jpg"
+                                alt="Interviewer Avatar"
+                                fill
+                                style={{ objectFit: "cover" }}
+                                priority
+                                className="rounded-lg"
+                            />
+                        </div>
                     </div>
-                ))}
-                {loading && <p className="text-gray-500">Loading...</p>}
+                </div>
+            </div>
+
+            {/* Bottom Controls Bar */}
+            <div className="bg-gray-800 p-4 flex justify-center items-center gap-4">
+                {!connected ? (
+                    <button
+                        className={`px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-lg font-medium flex items-center gap-2`}
+                        onClick={init}
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <>
+                                <svg
+                                    className="animate-spin h-5 w-5 text-white"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                    ></circle>
+                                    <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                    ></path>
+                                </svg>
+                                Connecting...
+                            </>
+                        ) : cameraEnabled ? (
+                            "Start Interview with Camera"
+                        ) : (
+                            "Start Interview"
+                        )}
+                    </button>
+                ) : (
+                    <button
+                        className="px-6 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 text-lg font-medium flex items-center gap-2"
+                        onClick={cleanupConnection}
+                        disabled={loading}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                        >
+                            <path
+                                fillRule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                clipRule="evenodd"
+                            />
+                        </svg>
+                        End Interview
+                    </button>
+                )}
             </div>
         </div>
     );

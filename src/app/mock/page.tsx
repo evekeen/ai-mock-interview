@@ -1,21 +1,54 @@
+"use client";
+
+import { useState } from "react";
 import VoiceAssistant from "./components/VoiceAssistant";
 
 export default function MockInterviewPage() {
+    const [cameraEnabled, setCameraEnabled] = useState(false);
+
     return (
-        <div className="p-6 flex flex-col gap-4 items-center">
-            <h1 className="text-2xl font-bold">Mock Interview</h1>
-            <p>Practice your response to the selected question.</p>
-            {/* Professional interviewer image */}
-            <div className="w-36 h-36 mb-4 rounded-full overflow-hidden border-4 border-gray-300 flex items-center justify-center bg-gray-100">
-                <svg
-                    className="h-24 w-24 text-gray-500"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path d="M12 14.75c3.17 0 5.75-2.58 5.75-5.75S15.17 3.25 12 3.25 6.25 5.83 6.25 9s2.58 5.75 5.75 5.75zM12 5.25c2.07 0 3.75 1.68 3.75 3.75 0 2.07-1.68 3.75-3.75 3.75S8.25 11.07 8.25 9c0-2.07 1.68-3.75 3.75-3.75zM15.5 16.5h-7c-3.03 0-5.5 2.47-5.5 5.5v.25h2v-.25c0-1.93 1.57-3.5 3.5-3.5h7c1.93 0 3.5 1.57 3.5 3.5v.25h2v-.25c0-3.03-2.47-5.5-5.5-5.5z" />
-                </svg>
+        <div className="h-screen flex flex-col">
+            {/* Interview Header with controls */}
+            <div className="bg-gray-800 text-white p-3 flex justify-between items-center">
+                <h1 className="text-xl font-semibold">Mock Interview</h1>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => setCameraEnabled(!cameraEnabled)}
+                        className={`px-3 py-1 rounded-md flex items-center gap-2 ${
+                            cameraEnabled
+                                ? "bg-green-600 hover:bg-green-700"
+                                : "bg-gray-600 hover:bg-gray-700"
+                        }`}
+                        aria-label={
+                            cameraEnabled ? "Turn camera off" : "Turn camera on"
+                        }
+                        title={
+                            cameraEnabled ? "Turn camera off" : "Turn camera on"
+                        }
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                        >
+                            <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                            <path d="M14 6a1 1 0 011 1v4a1 1 0 001 1h1a1 1 0 001-1V7a1 1 0 00-1-1h-1a1 1 0 00-1 1z" />
+                        </svg>
+                        {cameraEnabled ? "Camera On" : "Camera Off"}
+                    </button>
+                </div>
             </div>
-            <VoiceAssistant />
+
+            {/* Main interview area */}
+            <div className="flex-1 flex">
+                <div className="flex-1 bg-gray-100 p-6 flex flex-col">
+                    {/* Interview content */}
+                    <div className="flex-1 flex items-center justify-center">
+                        <VoiceAssistant cameraEnabled={cameraEnabled} />
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
