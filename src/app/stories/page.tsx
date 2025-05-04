@@ -1,9 +1,8 @@
 "use client";
 
-import { auth } from "@clerk/nextjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function StoriesPage() {
   const router = useRouter();
