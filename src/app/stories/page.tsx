@@ -1,7 +1,6 @@
 "use client";
 
-import React from "react";
-import Link from "next/link"; // Import Link
+import { Button } from "@/components/ui/button";
 import {
     Card,
     CardContent,
@@ -10,7 +9,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import Link from "next/link"; // Import Link
 
 // Define the structure for a story topic
 interface StoryTopic {
@@ -120,17 +119,21 @@ export default function StoriesPage() {
                             </p>
                         </CardContent>
                         <CardFooter className="flex justify-between">
-                            <Button variant="outline">
-                                Help Me Brainstorm
-                            </Button>
-                            {/* Updated Button to Link */}
+                            <Link
+                                href={`/practice/${topic.id}`}
+                                passHref
+                            >
+                                <Button variant="outline" className="cursor-pointer">
+                                    Help Me Brainstorm
+                                </Button>
+                            </Link>
                             <Link
                                 href={`/mock?topic=${encodeURIComponent(
                                     topic.title
                                 )}`}
                                 passHref
                             >
-                                <Button>Practice the Question</Button>
+                                <Button className="cursor-pointer">Practice the Question</Button>
                             </Link>
                         </CardFooter>
                     </Card>
