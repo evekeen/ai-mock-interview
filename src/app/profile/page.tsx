@@ -43,7 +43,7 @@ export default function ProfilePage() {
         <h2 className="text-xl font-semibold mb-4">Build Your Interview Profile</h2>
         <p className="mb-6 text-gray-600">
           Complete your profile to get the most personalized interview preparation experience.
-          We'll use this information to tailor your practice sessions.
+            We&apos;ll use this information to tailor your practice sessions.
         </p>
         
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -74,7 +74,7 @@ export default function ProfilePage() {
               value={formState.jobDescription}
               onChange={handleChange}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="Paste the job description you're applying for..."
+              placeholder="Paste the job description you&apos;re applying for..."
               required
             />
           </div>
@@ -90,7 +90,7 @@ export default function ProfilePage() {
               value={formState.additionalNotes}
               onChange={handleChange}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="Any other information you'd like us to know (skills, career goals, etc.)"
+              placeholder="Any other information you&apos;d like us to know (skills, career goals, etc.)"
             />
           </div>
           

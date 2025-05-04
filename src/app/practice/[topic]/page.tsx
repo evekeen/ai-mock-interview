@@ -11,6 +11,19 @@ type Message = {
   timestamp: Date;
 };
 
+interface UserProfile {
+  name: string;
+  role?: string;
+  experience?: string;
+  skills?: string[];
+  background?: string;
+  interests?: string[];
+  goals?: string[];
+  education?: string;
+  projects?: string[];
+  achievements?: string[];
+}
+
 const getQuestionForTopic = (topicId: string): string => {
   const questions: Record<string, string> = {
     conflict: "Tell me about a time when you had to resolve a conflict within your team. What was your approach, and what was the outcome?",
@@ -46,7 +59,7 @@ export default function PracticePage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Check if topic exists
@@ -98,6 +111,11 @@ export default function PracticePage() {
     
     try {
       // Get AI response
+      if (!userProfile) {
+        router.push('/profile');
+        return;
+      }
+      
       const aiResponse = await fetchAIResponse([...messages, userMessage], userProfile, topicId);
       
       // Add AI response to chat
@@ -130,7 +148,7 @@ export default function PracticePage() {
   // Function to fetch AI response
   const fetchAIResponse = async (
     messageHistory: Message[], 
-    profile: any, 
+    profile: UserProfile, 
     topic: string
   ): Promise<string> => {
     try {
