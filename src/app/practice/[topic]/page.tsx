@@ -553,6 +553,31 @@ export default function PracticePage() {
                   Send
                 </button>
               </form>
+              
+              {/* Suggestion buttons */}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {[
+                  "Suggest a story based on my resume",
+                  "What counts as leadership for me?",
+                  "Help me structure this story",
+                  "Is this a strong PEI story?",
+                  "Help me show personal impact",
+                  "Make this story more quantifiable",
+                  "What follow-ups might I get?",
+                  "How do I sound more authentic?",
+                  "How do I highlight my role?",
+                  "Help with a challenge/conflict story"
+                ].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    onClick={() => setInput(suggestion)}
+                    className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full transition-colors"
+                    disabled={isLoading || isSaving}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           
