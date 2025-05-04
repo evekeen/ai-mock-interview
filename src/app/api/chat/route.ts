@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs';
+import { auth } from "@clerk/nextjs/server";
 import dotenv from 'dotenv';
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
@@ -21,7 +21,7 @@ const openaiClient = new OpenAI({
 export async function POST(req: Request) {
   try {
     // Verify that the user is authenticated
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
 }
 
 // Function to generate a system prompt based on user profile and topic
-function generateSystemPrompt(profile: any, topic: string): string {
+function generateSystemPrompt(profile: Record<string, unknown>, topic: string): string {
   const { resume, jobDescription, additionalNotes } = profile || {};
   
   const topicPrompts: Record<string, string> = {
