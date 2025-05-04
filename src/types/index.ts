@@ -15,7 +15,7 @@ export type Upload = {
   user_id: string;
   type: UploadType;
   url: string;
-  parsed_json?: Record<string, any>;
+  parsed_json?: Record<string, unknown>;
   created_at?: string;
 };
 

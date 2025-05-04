@@ -14,7 +14,7 @@ export default async function BrainstormPage() {
       
       <div className="bg-white shadow-md rounded-lg p-6">
         <p className="mb-6">
-          Freely write about your professional experiences. Think about challenges you've overcome, projects you're proud of, 
+          Freely write about your professional experiences. Think about challenges you&apos;ve overcome, projects you&apos;re proud of, 
           and situations where you demonstrated leadership, teamwork, or problem-solving skills.
         </p>
         

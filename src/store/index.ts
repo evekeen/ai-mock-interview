@@ -1,6 +1,19 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+// Create a safe storage object
+const createNoopStorage = () => {
+  return {
+    getItem: () => String(null),
+    setItem: () => {},
+    removeItem: () => {}
+  };
+};
+
+const storage = typeof window !== 'undefined' 
+  ? createJSONStorage(() => localStorage) 
+  : createJSONStorage(createNoopStorage);
+
 type UserState = {
   personalityType: string | null;
   experience: string | null;
@@ -22,15 +35,15 @@ export const useUserStore = create<UserState>()(
     }),
     {
       name: 'user-storage',
-      storage: createJSONStorage(() => typeof window !== 'undefined' ? localStorage : null as any),
+      storage,
     }
   )
 );
 
 type StoryState = {
-  stories: Record<string, any>[];
-  addStory: (story: Record<string, any>) => void;
-  updateStory: (id: string, data: Record<string, any>) => void;
+  stories: Record<string, unknown>[];
+  addStory: (story: Record<string, unknown>) => void;
+  updateStory: (id: string, data: Record<string, unknown>) => void;
   removeStory: (id: string) => void;
 };
 
@@ -50,7 +63,7 @@ export const useStoryStore = create<StoryState>()(
     }),
     {
       name: 'story-storage',
-      storage: createJSONStorage(() => typeof window !== 'undefined' ? localStorage : null as any),
+      storage,
     }
   )
 ); 

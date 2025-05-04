@@ -2,8 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from 'next/server';
 
 export async function POST(
-  req: Request,
-  { params }: { params: { __metadata_id__: string } }
+  req: Request
 ) {
   try {
     // Verify that the user is authenticated

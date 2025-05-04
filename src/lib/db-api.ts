@@ -38,7 +38,7 @@ export const userApi = {
 };
 
 export const uploadApi = {
-  async createUpload(userId: string, type: UploadType, url: string, parsedJson?: Record<string, any>): Promise<Upload | null> {
+  async createUpload(userId: string, type: UploadType, url: string, parsedJson?: Record<string, unknown>): Promise<Upload | null> {
     const { data, error } = await supabase
       .from('uploads')
       .insert([{ 

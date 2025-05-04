@@ -26,10 +26,10 @@ export default function InterviewPrepPage() {
               These questions typically start with phrases like:
             </p>
             <ul className="list-disc pl-5 my-4 space-y-2">
-              <li>"Tell me about a time when..."</li>
-              <li>"Describe a situation where..."</li>
-              <li>"Give me an example of..."</li>
-              <li>"How have you handled..."</li>
+              <li>&quot;Tell me about a time when...&quot;</li>
+              <li>&quot;Describe a situation where...&quot;</li>
+              <li>&quot;Give me an example of...&quot;</li>
+              <li>&quot;How have you handled...&quot;</li>
             </ul>
           </div>
           
