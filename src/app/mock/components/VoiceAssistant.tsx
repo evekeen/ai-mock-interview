@@ -104,7 +104,7 @@ export default function VoiceAssistant() {
 
             console.log("Sending offer to OpenAI...");
             const baseUrl = "https://api.openai.com/v1/realtime";
-            const model = "gpt-4o"; // Match the model in the token endpoint
+            const model = "gpt-4o-realtime-preview"; // Match the model in the token endpoint
             const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
                 method: "POST",
                 body: offer.sdp,
@@ -281,20 +281,51 @@ export default function VoiceAssistant() {
     // Cleanup function
     function cleanupConnection() {
         console.log("Cleaning up connection...");
+
+        // Save transcript to localStorage if there are messages
+        if (messages.length > 0) {
+            const conversationData = {
+                topic: topic,
+                transcript: messages,
+                timestamp: new Date().toISOString(),
+            };
+            localStorage.setItem(
+                "interviewTranscript",
+                JSON.stringify(conversationData)
+            );
+
+            // Optionally redirect to the feedback page
+            // Note: Using window.location instead of router to ensure full page reload
+            window.location.href = "/feedback";
+        }
+
         if (peerRef.current) {
             peerRef.current.close();
             peerRef.current = null;
         }
+
         if (dataChannelRef.current) {
             dataChannelRef.current.close();
             dataChannelRef.current = null;
         }
+
         // Stop local media tracks
         if (peerRef.current) {
-            peerRef.current.getSenders().forEach((sender) => {
-                sender.track?.stop();
-            });
+            try {
+                // Get all tracks from all senders and stop them
+                const senders = (
+                    peerRef.current as RTCPeerConnection
+                ).getSenders();
+                senders.forEach((sender) => {
+                    if (sender.track) {
+                        sender.track.stop();
+                    }
+                });
+            } catch (error) {
+                console.error("Error stopping tracks:", error);
+            }
         }
+
         // Remove audio player if dynamically added
         if (audioPlayerRef.current) {
             audioPlayerRef.current.pause();
@@ -303,6 +334,7 @@ export default function VoiceAssistant() {
             // audioPlayerRef.current.remove();
             // audioPlayerRef.current = null;
         }
+
         setConnected(false);
         setLoading(false);
     }
