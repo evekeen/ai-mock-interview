@@ -8,7 +8,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { storyApi } from "../../../lib/db-api";
-import { Story } from "../../../types";
+import { Story as BaseStory } from "../../../types";
 
 type Message = {
   id: string;
@@ -16,6 +16,14 @@ type Message = {
   content: string;
   timestamp: Date;
 };
+
+// Extend the imported Story type with our needed properties
+interface Story extends BaseStory {
+  metadata?: {
+    isFinal?: boolean;
+    [key: string]: any;
+  };
+}
 
 interface UserProfile {
   name: string;
@@ -200,6 +208,9 @@ export default function PracticePage() {
   const analyzeStory = async (storyContent: string) => {
     if (!storyContent.trim()) return;
     
+    // Don't analyze if the content is a suggestion message
+    if (isSuggestionMessage(storyContent)) return;
+    
     setIsAnalyzing(true);
     
     try {
@@ -320,6 +331,25 @@ export default function PracticePage() {
     }
   };
   
+  // List of suggestion messages to filter out
+  const suggestionMessages = [
+    "Suggest a story based on my resume",
+    "What counts as leadership for me?",
+    "Help me structure this story",
+    "Is this a strong PEI story?",
+    "Help me show personal impact",
+    "Make this story more quantifiable",
+    "What follow-ups might I get?",
+    "How do I sound more authentic?",
+    "How do I highlight my role?",
+    "Help with a challenge/conflict story"
+  ];
+  
+  // Function to filter out suggestion messages
+  const isSuggestionMessage = (content: string): boolean => {
+    return suggestionMessages.includes(content.trim());
+  };
+  
   // Function to fetch AI response
   const fetchAIResponse = async (
     messageHistory: Message[], 
@@ -327,16 +357,22 @@ export default function PracticePage() {
     topic: string
   ): Promise<string> => {
     try {
+      // Filter out suggestion messages for the API request
+      const filteredMessages = messageHistory.map(msg => ({
+        role: msg.role,
+        // Keep only user messages that aren't suggestions
+        content: msg.role === "user" && isSuggestionMessage(msg.content) 
+          ? "SUGGESTION_MESSAGE" // Mark as suggestion
+          : msg.content
+      }));
+      
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: messageHistory.map(msg => ({
-            role: msg.role,
-            content: msg.content
-          })),
+          messages: filteredMessages,
           profile,
           topic,
           currentStory: currentStory,
@@ -372,7 +408,10 @@ export default function PracticePage() {
     setShowSaveDialog(true);
     
     // Get the most recent user message as the final story
-    const userMessages = messages.filter(msg => msg.role === "user");
+    // Filter out suggestion messages
+    const userMessages = messages
+      .filter(msg => msg.role === "user" && !isSuggestionMessage(msg.content));
+    
     if (userMessages.length > 0) {
       setFinalStory(userMessages[userMessages.length - 1].content);
     }
@@ -555,29 +594,20 @@ export default function PracticePage() {
               </form>
               
               {/* Suggestion buttons */}
-              <div className="mt-4 flex flex-wrap gap-2">
-                {[
-                  "Suggest a story based on my resume",
-                  "What counts as leadership for me?",
-                  "Help me structure this story",
-                  "Is this a strong PEI story?",
-                  "Help me show personal impact",
-                  "Make this story more quantifiable",
-                  "What follow-ups might I get?",
-                  "How do I sound more authentic?",
-                  "How do I highlight my role?",
-                  "Help with a challenge/conflict story"
-                ].map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    onClick={() => setInput(suggestion)}
-                    className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full transition-colors"
-                    disabled={isLoading || isSaving}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
+              {!messages.some(message => message.role === "user") && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {suggestionMessages.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => setInput(suggestion)}
+                      className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full transition-colors"
+                      disabled={isLoading || isSaving}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           
@@ -597,7 +627,7 @@ export default function PracticePage() {
               <div className="bg-gray-50 p-3 rounded-md mb-2 text-sm">
                 {currentStory.bullet_points[0]}
               </div>
-              {currentStory.metadata?.isFinal && (
+              {currentStory.metadata?.isFinal === true && (
                 <div className="text-xs text-green-600 font-medium mb-3">
                   ✓ Final Version
                 </div>

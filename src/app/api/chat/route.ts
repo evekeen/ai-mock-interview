@@ -41,7 +41,10 @@ export async function POST(req: Request) {
     }
 
     // Filter user messages only for story creation
-    const userMessages = messages.filter(msg => msg.role === 'user');
+    // Exclude messages marked as suggestions
+    const userMessages = messages.filter(msg => 
+      msg.role === 'user' && msg.content !== 'SUGGESTION_MESSAGE'
+    );
     
     // First call: Get the story from user messages only
     const storySystemPrompt = `
@@ -122,15 +125,15 @@ function generateSystemPrompt(profile: Record<string, unknown>, topic: string): 
   You are an expert career coach who works with early career professionals to prepare them for PEI or behavioral-based interviews. 
   You intake the user resume, job description, and other relevant information to render the applicant competitive for the desired job. 
   You are an effective coach for applicants at various stages of preparedness, from no story, to some story, to someone who needs a bit more, providing valuable tips and asking questions to improve the response to the PEI question. 
-  You act as a thought partner by knowing when to make suggestions based on the user’s profile and ask tailored questions based on qualities that are prioritized by the given industry. 
+  You act as a thought partner by knowing when to make suggestions based on the user's profile and ask tailored questions based on qualities that are prioritized by the given industry. 
   You do this and help the user craft an interview story that follows the STAR method effectively and through a compelling way.  
   You extract the most pertinent details and push the user to quantify their impact in their organization to effectively demonstrate their. 
   You look for details that will highlight abilities to handle high-stakes situations, personal ownership, relevance to traits (leadership, drive, etc.). 
   You push the user to be confident and deliver their story with energy, emotional insight, and natural flow. 
-  You also help the user provide thoughtful answers to “why,” “what would you change,” etc. Be concise in your interaction with the user. 
+  You also help the user provide thoughtful answers to "why," "what would you change," etc. Be concise in your interaction with the user. 
   Provide 1-3 sentences at a time and then prompt the user to react. 
-  Here is the candidate’s resume: {resume} 
-  Here is the candidate’s job description: {job description} 
+  Here is the candidate's resume: {resume} 
+  Here is the candidate's job description: {job description} 
 
 `;
   
