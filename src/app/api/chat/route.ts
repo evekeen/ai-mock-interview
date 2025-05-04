@@ -2,7 +2,9 @@ import { auth } from "@clerk/nextjs/server";
 import dotenv from 'dotenv';
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { zodResponseFormat } from 'openai/helpers/zod';
 import path from 'path';
+import { z } from 'zod';
 
 // Load environment variables
 dotenv.config({ path: path.join(process.cwd(), '.env') });
@@ -17,6 +19,10 @@ if (!apiKey) {
 const openaiClient = new OpenAI({
   apiKey
 });
+
+const feedbackFormat = zodResponseFormat(z.object({
+  feedback: z.string()
+}), 'json_object');
 
 export async function POST(req: Request) {
   try {
@@ -34,30 +40,71 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid messages format' }, { status: 400 });
     }
 
-    // Generate context for the AI based on user profile and topic
-    const systemPrompt = generateSystemPrompt(profile, topic);
+    // Filter user messages only for story creation
+    const userMessages = messages.filter(msg => msg.role === 'user');
+    
+    // First call: Get the story from user messages only
+    const storySystemPrompt = `
+Take the content from all user messages and compile them into a single coherent story.
+DO NOT add any new information, embellishments, or changes to the facts presented.
+Only use what was explicitly stated by the user.
+Format the story following a logical flow.
+Use the same exact wording as the user used.
+`;
 
-    // Format messages for OpenAI API
-    const formattedMessages = [
-      {
-        role: 'system',
-        content: systemPrompt
-      },
-      ...messages
-    ];
-
-    // Call OpenAI API
-    const response = await openaiClient.chat.completions.create({
-      model: "gpt-4o-mini", // You can change this to your preferred model
-      messages: formattedMessages,
+    const storyResponse = await openaiClient.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: 'system',
+          content: storySystemPrompt
+        },
+        ...userMessages
+      ],
       max_tokens: 800,
-      temperature: 0.7,
+      temperature: 0.3
     });
 
-    // Extract the response text
-    const responseText = response.choices[0].message.content?.trim() || "";
+    const updatedStory = storyResponse.choices[0].message.content?.trim() || "";
 
-    return NextResponse.json({ response: responseText });
+    // Generate context for the feedback AI based on user profile and topic
+    const feedbackSystemPrompt = generateSystemPrompt(profile, topic);
+
+    // Second call: Get feedback on the story
+    const feedbackResponse = await openaiClient.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: 'system',
+          content: feedbackSystemPrompt
+        },
+        ...messages,
+        {
+          role: 'system',
+          content: `Here is the compiled story based solely on the user's input:\n\n${updatedStory}\n\nProvide feedback on this story.`
+        }
+      ],
+      max_tokens: 800,
+      temperature: 0.7,
+      response_format: feedbackFormat
+    });
+
+    // Extract feedback
+    const feedbackContent = feedbackResponse.choices[0].message.content?.trim() || "";
+    
+    try {
+      const parsedFeedback = JSON.parse(feedbackContent);
+      return NextResponse.json({
+        response: parsedFeedback.feedback,
+        updatedStory: updatedStory
+      });
+    } catch (error) {
+      console.error('Error parsing JSON response:', error);
+      return NextResponse.json({ 
+        response: 'Failed to parse feedback',
+        updatedStory: updatedStory 
+      });
+    }
   } catch (error) {
     console.error('Error in chat API route:', error);
     return NextResponse.json(
@@ -85,6 +132,17 @@ function generateSystemPrompt(profile: Record<string, unknown>, topic: string): 
 
   const topicGuidance = topicPrompts[topic] || "You are evaluating the user's interview response.";
   
+  const starEvaluationInstructions = `
+  You must return your response in JSON format with the following structure:
+{
+  "feedback": string
+}
+
+Where feedback is your detailed evaluation and suggestions for improvement.
+
+In your feedback text, clearly indicate which parts of the STAR framework are present or missing, and provide specific suggestions for improvement.
+`;
+  
   return `
 You are an expert behavioral interview coach helping a job candidate prepare for interviews. 
 ${topicGuidance}
@@ -95,18 +153,18 @@ ${jobDescription ? `TARGET JOB DESCRIPTION: ${jobDescription}` : ''}
 
 ${additionalNotes ? `ADDITIONAL NOTES: ${additionalNotes}` : ''}
 
+${starEvaluationInstructions}
+
 INSTRUCTIONS:
-1. First, listen to the candidate's response to the behavioral question.
-2. Evaluate their response based on the STAR method (Situation, Task, Action, Result).
-3. Provide constructive feedback on:
+1. Evaluate the candidate's response based on the STAR method (Situation, Task, Action, Result).
+2. Provide constructive feedback on:
    - Structure and completeness of their response
    - Relevance to the question asked
    - Clarity and conciseness
    - Quantifiable results or impact where applicable
    - Professional language and delivery
-4. Ask follow-up questions to help them improve areas that are weak or missing.
-5. Be encouraging but honest - point out strengths while suggesting improvements.
-6. Keep your responses concise and focused on helping them improve.
+3. Be encouraging but honest - point out strengths while suggesting improvements.
+4. Keep your responses concise and focused on helping them improve.
 
 Your goal is to help them craft better stories for their behavioral interviews that highlight their relevant skills and experiences.
   `;

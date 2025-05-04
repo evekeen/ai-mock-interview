@@ -26,6 +26,7 @@ export type Story = {
   title: string;
   bullet_points?: string[];
   score?: number;
+  metadata?: Record<string, unknown>;
   created_at?: string;
 };
 
