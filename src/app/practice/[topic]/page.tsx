@@ -290,8 +290,8 @@ export default function PracticePage() {
         return;
       }
       
-      // Save the story content to Supabase
-      await saveStory(userMessage.content);
+      // We'll no longer save the user message directly as the story
+      // The updatedStory from the API response will be used instead
       
       const aiResponse = await fetchAIResponse([...messages, userMessage], userProfile, topicId);
       
@@ -349,9 +349,19 @@ export default function PracticePage() {
         throw new Error('Failed to fetch AI response');
       }
       
-      const data = await response.json();
+      type ChatResponse = {
+        response: string;
+        updatedStory?: string;
+      };
       
-      return data.response;
+      const data = await response.json() as ChatResponse;
+      
+      // If there's an updated story, save it
+      if (data.updatedStory) {
+        await saveStory(data.updatedStory);
+      }
+      
+      return data.response || 'No response received';
     } catch (error) {
       console.error('Error fetching AI response:', error);
       return "I'm sorry, I encountered an error generating a response.";

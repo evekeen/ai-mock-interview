@@ -2,9 +2,9 @@ import { auth } from "@clerk/nextjs/server";
 import dotenv from 'dotenv';
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { zodResponseFormat } from 'openai/helpers/zod';
 import path from 'path';
 import { z } from 'zod';
-import { zodResponseFormat } from 'openai/helpers/zod';
 
 // Load environment variables
 dotenv.config({ path: path.join(process.cwd(), '.env') });
@@ -112,7 +112,7 @@ function generateSystemPrompt(profile: Record<string, unknown>, topic: string): 
 }
 
 Where:
-- updatedStory is the updated final version of the user's story
+- updatedStory is the updated final version of the user's story, based on the entire conversation history and all previous improvements. Each time the user sends a message, you should generate an improved version of their story that incorporates all feedback and changes so far.
 - feedback is your detailed evaluation and suggestions for improvement
 
 In your feedback text, clearly indicate which parts of the STAR framework are present or missing, and provide specific suggestions for improvement.
@@ -142,6 +142,8 @@ INSTRUCTIONS:
 4. Ask follow-up questions to help them improve areas that are weak or missing.
 5. Be encouraging but honest - point out strengths while suggesting improvements.
 6. Keep your responses concise and focused on helping them improve.
+7. Always maintain continuity by considering the entire conversation history when generating the updated story.
+8. Each time the user sends a message, generate an improved version of their story that incorporates all previous feedback and changes.
 
 Your goal is to help them craft better stories for their behavioral interviews that highlight their relevant skills and experiences.
   `;
