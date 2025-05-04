@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
         // Format the transcript for the API
         const formattedTranscript = transcript
             .map(
-                (message: any) =>
+                (message: { from: string; text: string }) =>
                     `${
                         message.from === "user" ? "Candidate" : "Interviewer"
                     }: ${message.text}`
@@ -344,10 +344,10 @@ export async function POST(req: NextRequest) {
             scoreBand,
             summary,
         });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
         console.error("Interview analysis error:", error);
         return NextResponse.json(
-            { error: error.message || "Failed to analyze interview" },
+            { error: error instanceof Error ? error.message : "Failed to analyze interview" },
             { status: 500 }
         );
     }

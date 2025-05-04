@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
     // Ensure the API key is available
     if (!process.env.OPENAI_API_KEY) {
         console.error("OPENAI_API_KEY environment variable is not set.");
@@ -56,10 +56,10 @@ export async function GET(req: NextRequest) {
 
         // Return only the necessary part of the client_secret object
         return NextResponse.json({ token: data.client_secret.value });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
         console.error("[GET /api/openai/token] error:", error);
         return NextResponse.json(
-            { error: error.message || "Internal Server Error" },
+            { error: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }

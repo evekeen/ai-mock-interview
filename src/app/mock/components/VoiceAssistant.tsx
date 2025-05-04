@@ -1,7 +1,7 @@
 "use client";
-import React, { useState, useRef, useEffect } from "react";
-import { useSearchParams } from "next/navigation"; // To get the topic
 import { getToken } from "@/services/openai/token";
+import { useSearchParams } from "next/navigation"; // To get the topic
+import { useEffect, useRef, useState } from "react";
 
 // Define message type
 interface Message {
@@ -159,9 +159,9 @@ export default function VoiceAssistant() {
             console.log(
                 "🔔 WebRTC connection setup initiated. Waiting for DataChannel to open..."
             );
-        } catch (err: any) {
+        } catch (err: Error | unknown) {
             console.error("Initialization failed:", err);
-            setError(`Connection failed: ${err.message}`);
+            setError(`Connection failed: ${err instanceof Error ? err.message : 'Connection error'}`);
             setLoading(false);
             cleanupConnection();
         }

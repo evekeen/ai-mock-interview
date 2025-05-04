@@ -115,7 +115,7 @@ export default function StoriesPage() {
                         </CardHeader>
                         <CardContent className="flex-grow">
                             <p className="text-sm text-gray-500 italic">
-                                Example: "{topic.exampleQuestion}"
+                                Example: &quot;{topic.exampleQuestion}&quot;
                             </p>
                         </CardContent>
                         <CardFooter className="flex justify-between">

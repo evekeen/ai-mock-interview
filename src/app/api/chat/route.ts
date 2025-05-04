@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import path from 'path';
+import { z } from 'zod';
+import { zodResponseFormat } from 'openai/helpers/zod';
 
 // Load environment variables
 dotenv.config({ path: path.join(process.cwd(), '.env') });
@@ -17,6 +19,11 @@ if (!apiKey) {
 const openaiClient = new OpenAI({
   apiKey
 });
+
+const brainstormFormat = zodResponseFormat(z.object({
+  updatedStory: z.string(),
+  feedback: z.string()
+}), 'json_object');
 
 export async function POST(req: Request) {
   try {
@@ -52,12 +59,24 @@ export async function POST(req: Request) {
       messages: formattedMessages,
       max_tokens: 800,
       temperature: 0.7,
+      response_format: brainstormFormat
     });
 
     // Extract the response text
-    const responseText = response.choices[0].message.content?.trim() || "";
-
-    return NextResponse.json({ response: responseText });
+    const responseContent = response.choices[0].message.content?.trim() || "";
+    
+    // If evaluating STAR and response is JSON, parse it and return structured data
+    try {
+      const parsedResponse = JSON.parse(responseContent);
+      return NextResponse.json({
+        response: parsedResponse.feedback,
+        updatedStory: parsedResponse.updatedStory
+      });
+    } catch (error) {
+      console.error('Error parsing JSON response:', error);
+      // Fallback to returning the raw response
+      return NextResponse.json({ response: responseContent });
+    }
   } catch (error) {
     console.error('Error in chat API route:', error);
     return NextResponse.json(
@@ -85,6 +104,20 @@ function generateSystemPrompt(profile: Record<string, unknown>, topic: string): 
 
   const topicGuidance = topicPrompts[topic] || "You are evaluating the user's interview response.";
   
+  const starEvaluationInstructions = `
+  You must return your response in JSON format with the following structure:
+{
+  "updatedStory": string
+  "feedback": string
+}
+
+Where:
+- updatedStory is the updated final version of the user's story
+- feedback is your detailed evaluation and suggestions for improvement
+
+In your feedback text, clearly indicate which parts of the STAR framework are present or missing, and provide specific suggestions for improvement.
+`;
+  
   return `
 You are an expert behavioral interview coach helping a job candidate prepare for interviews. 
 ${topicGuidance}
@@ -94,6 +127,8 @@ ${resume ? `CANDIDATE RESUME: ${resume}` : ''}
 ${jobDescription ? `TARGET JOB DESCRIPTION: ${jobDescription}` : ''}
 
 ${additionalNotes ? `ADDITIONAL NOTES: ${additionalNotes}` : ''}
+
+${starEvaluationInstructions}
 
 INSTRUCTIONS:
 1. First, listen to the candidate's response to the behavioral question.

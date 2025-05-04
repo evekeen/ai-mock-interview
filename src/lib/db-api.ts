@@ -83,7 +83,11 @@ export const storyApi = {
       .select()
       .single();
       
-    if (error) throw error;
+    if (error) {
+      console.error(`Failed to create story for user ${userId}, category ${category}:`, error);
+      throw error;
+    }
+    console.log(`Successfully created story ${data.id} for user ${userId}, category ${category}`);
     return data;
   },
   
@@ -95,7 +99,11 @@ export const storyApi = {
       .select()
       .single();
       
-    if (error) throw error;
+    if (error) {
+      console.error(`Failed to update story ${storyId}:`, error);
+      throw error;
+    }
+    console.log(`Successfully updated story ${storyId}`);
     return data;
   },
   
@@ -107,6 +115,18 @@ export const storyApi = {
       
     if (error) throw error;
     return data || [];
+  },
+  
+  async getUserStoryByCategory(userId: string, category: string): Promise<Story | null> {
+    const { data, error } = await supabase
+      .from('stories')
+      .select()
+      .eq('user_id', userId)
+      .eq('category', category)
+      .single();
+      
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
   }
 };
 

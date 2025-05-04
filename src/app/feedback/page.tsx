@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 // Define types
 interface Message {
@@ -139,10 +139,10 @@ export default function FeedbackPage() {
 
             const data = await response.json();
             setFeedback(data);
-        } catch (e: any) {
+        } catch (e: Error | unknown) {
             console.error("Error analyzing interview:", e);
             setError(
-                e.message || "An error occurred while analyzing your interview."
+                e instanceof Error ? e.message : "An error occurred while analyzing your interview."
             );
         } finally {
             setAnalyzing(false);
@@ -241,7 +241,7 @@ export default function FeedbackPage() {
                         <p>Analyzing your interview performance...</p>
                     </div>
                     <p className="text-sm text-gray-500 mt-4">
-                        This may take a moment as we're carefully evaluating
+                        This may take a moment as we&apos;re carefully evaluating
                         your responses across multiple dimensions.
                     </p>
                 </div>
