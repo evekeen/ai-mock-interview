@@ -117,8 +117,7 @@ Use the same exact wording as the user used.
   }
 }
 
-// Function to generate a system prompt based on user profile and topic
-function generateSystemPrompt(profile: Record<string, unknown>, topic: string): string {
+function generateSystemPrompt(profile: Record<string, unknown>): string {
   const { resume, jobDescription, additionalNotes } = profile || {};
   
   const basePrompt = `

@@ -101,7 +101,7 @@ export default function StoriesPage() {
             <h1 className="text-3xl font-bold mb-6">Select a Story Topic</h1>
             <p className="mb-8 text-lg text-gray-600">
                 Choose a common behavioral interview question topic below to
-                practice your response. We'll help you structure your story
+                practice your response. We&apos;ll help you structure your story
                 using the STAR method and provide feedback.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

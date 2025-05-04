@@ -21,7 +21,6 @@ type Message = {
 interface Story extends BaseStory {
   metadata?: {
     isFinal?: boolean;
-    [key: string]: any;
   };
 }
 
@@ -120,8 +119,6 @@ export default function PracticePage() {
   const [currentStory, setCurrentStory] = useState<Story | null>(null);
   const { userId } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
-  const [finalStory, setFinalStory] = useState<string>("");
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackData | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
@@ -404,64 +401,7 @@ export default function PracticePage() {
     }
   };
 
-  const handleSaveFinalStory = () => {
-    setShowSaveDialog(true);
-    
-    // Get the most recent user message as the final story
-    // Filter out suggestion messages
-    const userMessages = messages
-      .filter(msg => msg.role === "user" && !isSuggestionMessage(msg.content));
-    
-    if (userMessages.length > 0) {
-      setFinalStory(userMessages[userMessages.length - 1].content);
-    }
-  };
-
-  const handleConfirmSave = async () => {
-    if (!userId || !finalStory.trim()) return;
-    
-    setIsSaving(true);
-    try {
-      if (currentStory) {
-        // Update existing story and mark as final
-        const updatedStory = await storyApi.updateStory(currentStory.id, {
-          bullet_points: [finalStory],
-          title: topicName,
-          metadata: { 
-            isFinal: true
-          }
-        });
-        setCurrentStory(updatedStory);
-      }
-      
-      setShowSaveDialog(false);
-      
-      // Add confirmation message
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: "assistant",
-          content: "Your story has been saved as the final version. You can access it anytime you return to this topic.",
-          timestamp: new Date()
-        }
-      ]);
-      
-      // Keep analyzing the final story - this is an explicit user action
-      analyzeStory(finalStory);
-    } catch (error) {
-      console.error("Error saving final story:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleClearStory = async () => {
-    if (!userId || !currentStory) return;
-    
-    setShowClearDialog(true);
-  };
-
+  
   const handleConfirmClear = async () => {
     if (!userId || !currentStory) return;
     
@@ -600,10 +540,12 @@ export default function PracticePage() {
                     <button
                       key={suggestion}
                       onClick={() => setInput(suggestion)}
-                      className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full transition-colors"
+                      className="text-xs bg-gradient-to-r from-indigo-500/10 to-blue-500/10 text-indigo-700 px-3 py-1.5 rounded-full transition-all hover:from-indigo-500/20 hover:to-blue-500/20 hover:shadow-md hover:shadow-blue-200 border border-indigo-200/50 relative overflow-hidden group"
                       disabled={isLoading || isSaving}
                     >
-                      {suggestion}
+                      <span className="relative z-10">{suggestion}</span>
+                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-blue-500/5 group-hover:opacity-100 opacity-0 transition-opacity"></div>
+                      <div className="absolute top-0 left-0 h-full w-0 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 group-hover:w-full transition-all duration-300"></div>
                     </button>
                   ))}
                 </div>
@@ -649,10 +591,30 @@ export default function PracticePage() {
 
           {/* Feedback Analysis */}
           {isAnalyzing ? (
-            <div className="bg-white shadow-md rounded-lg p-4 mb-6">
-              <div className="flex items-center mb-4">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
-                <p className="text-sm">Analyzing your story...</p>
+            <div className="bg-white shadow-md rounded-lg p-4 mb-6 relative overflow-hidden">
+              <div className="flex items-center justify-center p-8">
+                <div className="relative">                  
+                  {/* Floating particles */}
+                  <div className="absolute top-0 left-0 w-full h-full">
+                    {[...Array(8)].map((_, i) => (
+                      <div 
+                        key={i}
+                        className="absolute w-2 h-2 bg-white rounded-full animate-ping"
+                        style={{
+                          top: `${Math.random() * 100}%`,
+                          left: `${Math.random() * 100}%`,
+                          animationDelay: `${Math.random() * 2}s`,
+                          animationDuration: `${1 + Math.random() * 3}s`
+                        }}
+                      ></div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="text-center mt-2">
+                <p className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-500 font-bold animate-pulse">Analyzing your story with AI magic</p>
+                <p className="text-xs text-gray-500 mt-1">Creating comprehensive feedback...</p>
               </div>
             </div>
           ) : feedback ? (
