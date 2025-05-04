@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import VoiceAssistant from "./components/VoiceAssistant";
 
 export default function MockInterviewPage() {
@@ -45,7 +45,9 @@ export default function MockInterviewPage() {
                 <div className="flex-1 bg-gray-100 p-6 flex flex-col">
                     {/* Interview content */}
                     <div className="flex-1 flex items-center justify-center">
-                        <VoiceAssistant cameraEnabled={cameraEnabled} />
+                        <Suspense fallback={<div>Loading...</div>}>
+                            <VoiceAssistant cameraEnabled={cameraEnabled} />
+                        </Suspense>
                     </div>
                 </div>
             </div>
