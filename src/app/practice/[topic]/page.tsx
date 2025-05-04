@@ -6,6 +6,7 @@ import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { storyApi } from "../../../lib/db-api";
 import { Story } from "../../../types";
 
@@ -154,10 +155,7 @@ export default function PracticePage() {
             }
           ]);
 
-          // If there's an existing story, analyze it right away
-          if (existingStory.bullet_points && existingStory.bullet_points.length > 0) {
-            analyzeStory(existingStory.bullet_points[0]);
-          }
+          // Removed automatic analysis when loading an existing story
         } else {
           // No existing story, just show the initial question
           setMessages([
@@ -257,8 +255,7 @@ export default function PracticePage() {
         setCurrentStory(newStory);
       }
       
-      // Analyze the updated story
-      analyzeStory(storyContent);
+      // Removed automatic analysis here
       
     } catch (error) {
       console.error("Error saving story:", error);
@@ -357,9 +354,11 @@ export default function PracticePage() {
       
       const data = await response.json() as ChatResponse;
       
-      // If there's an updated story, save it
+      // If there's an updated story, save it and analyze it
       if (data.updatedStory) {
         await saveStory(data.updatedStory);
+        // Analyze the story after a user message and story update
+        analyzeStory(data.updatedStory);
       }
       
       return data.response || 'No response received';
@@ -409,7 +408,7 @@ export default function PracticePage() {
         }
       ]);
       
-      // Analyze the final story
+      // Keep analyzing the final story - this is an explicit user action
       analyzeStory(finalStory);
     } catch (error) {
       console.error("Error saving final story:", error);
@@ -500,7 +499,11 @@ export default function PracticePage() {
                         : "bg-white border border-gray-200"
                     }`}
                   >
-                    <p>{message.content}</p>
+                    {message.role === "user" ? (
+                      <p>{message.content}</p>
+                    ) : (
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    )}
                   </div>
                   <div
                     className={`text-xs mt-1 text-gray-500 ${
@@ -550,27 +553,6 @@ export default function PracticePage() {
                   Send
                 </button>
               </form>
-              
-              {messages.length > 3 && (
-                <div className="mt-4 text-center flex justify-center space-x-4">
-                  <button
-                    onClick={handleSaveFinalStory}
-                    className="text-sm text-blue-600 hover:underline"
-                    disabled={isLoading || isSaving}
-                  >
-                    Save as Final Story Version
-                  </button>
-                  {currentStory && (
-                    <button
-                      onClick={() => setShowClearDialog(true)}
-                      className="text-sm text-red-600 hover:underline"
-                      disabled={isLoading || isSaving}
-                    >
-                      Start Over
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
           </div>
           
@@ -591,10 +573,22 @@ export default function PracticePage() {
                 {currentStory.bullet_points[0]}
               </div>
               {currentStory.metadata?.isFinal && (
-                <div className="text-xs text-green-600 font-medium">
+                <div className="text-xs text-green-600 font-medium mb-3">
                   ✓ Final Version
                 </div>
               )}
+              
+              <div className="flex justify-between mt-3">                
+                {currentStory && (
+                  <button
+                    onClick={() => setShowClearDialog(true)}
+                    className="px-3 py-1.5 border border-red-600 text-red-600 text-sm rounded hover:bg-red-50 transition-colors"
+                    disabled={isLoading || isSaving}
+                  >
+                    Start Over
+                  </button>
+                )}
+              </div>
             </Card>
           )}
 
@@ -662,7 +656,7 @@ export default function PracticePage() {
                           {
                             id: Date.now().toString(),
                             role: "assistant",
-                            content: `Here&apos;s some detailed feedback on your story:\n\nStrengths:\n${strengths}\n\nAreas for improvement:\n${improvements}`,
+                            content: `Here's some detailed feedback on your story:\n\n**Strengths:**\n${strengths}\n\n**Areas for improvement:**\n${improvements}`,
                             timestamp: new Date()
                           }
                         ]);
@@ -678,50 +672,13 @@ export default function PracticePage() {
             currentStory?.bullet_points && currentStory.bullet_points.length > 0 && (
               <div className="bg-white shadow-md rounded-lg p-4 mb-6 text-center">
                 <p className="text-sm text-gray-600">
-                  Your story will be analyzed automatically when you save changes.
+                  Your story will be analyzed when you send a message and the story updates.
                 </p>
               </div>
             )
           )}
         </div>
-      </div>
-      
-      {/* Save final story dialog */}
-      {showSaveDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-semibold mb-4">Save Final Story Version</h3>
-            <p className="mb-4 text-sm text-gray-600">
-              This will save your current story as the final version. You&apos;ll be able to access it when you return to this topic.
-            </p>
-            
-            <div className="mb-4">
-              <textarea
-                value={finalStory}
-                onChange={(e) => setFinalStory(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 h-32 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Your story..."
-              />
-            </div>
-            
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowSaveDialog(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmSave}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={isSaving}
-              >
-                {isSaving ? "Saving..." : "Save Final Version"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>          
 
       {/* Clear story dialog */}
       {showClearDialog && (

@@ -20,8 +20,7 @@ const openaiClient = new OpenAI({
   apiKey
 });
 
-const brainstormFormat = zodResponseFormat(z.object({
-  updatedStory: z.string(),
+const feedbackFormat = zodResponseFormat(z.object({
   feedback: z.string()
 }), 'json_object');
 
@@ -41,41 +40,70 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid messages format' }, { status: 400 });
     }
 
-    // Generate context for the AI based on user profile and topic
-    const systemPrompt = generateSystemPrompt(profile, topic);
+    // Filter user messages only for story creation
+    const userMessages = messages.filter(msg => msg.role === 'user');
+    
+    // First call: Get the story from user messages only
+    const storySystemPrompt = `
+Take the content from all user messages and compile them into a single coherent story.
+DO NOT add any new information, embellishments, or changes to the facts presented.
+Only use what was explicitly stated by the user.
+Format the story following a logical flow.
+Use the same exact wording as the user used.
+`;
 
-    // Format messages for OpenAI API
-    const formattedMessages = [
-      {
-        role: 'system',
-        content: systemPrompt
-      },
-      ...messages
-    ];
-
-    // Call OpenAI API
-    const response = await openaiClient.chat.completions.create({
-      model: "gpt-4o-mini", // You can change this to your preferred model
-      messages: formattedMessages,
+    const storyResponse = await openaiClient.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: 'system',
+          content: storySystemPrompt
+        },
+        ...userMessages
+      ],
       max_tokens: 800,
-      temperature: 0.7,
-      response_format: brainstormFormat
+      temperature: 0.3
     });
 
-    // Extract the response text
-    const responseContent = response.choices[0].message.content?.trim() || "";
+    const updatedStory = storyResponse.choices[0].message.content?.trim() || "";
+
+    // Generate context for the feedback AI based on user profile and topic
+    const feedbackSystemPrompt = generateSystemPrompt(profile, topic);
+
+    // Second call: Get feedback on the story
+    const feedbackResponse = await openaiClient.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: 'system',
+          content: feedbackSystemPrompt
+        },
+        ...messages,
+        {
+          role: 'system',
+          content: `Here is the compiled story based solely on the user's input:\n\n${updatedStory}\n\nProvide feedback on this story.`
+        }
+      ],
+      max_tokens: 800,
+      temperature: 0.7,
+      response_format: feedbackFormat
+    });
+
+    // Extract feedback
+    const feedbackContent = feedbackResponse.choices[0].message.content?.trim() || "";
     
-    // If evaluating STAR and response is JSON, parse it and return structured data
     try {
-      const parsedResponse = JSON.parse(responseContent);
+      const parsedFeedback = JSON.parse(feedbackContent);
       return NextResponse.json({
-        response: parsedResponse.feedback,
-        updatedStory: parsedResponse.updatedStory
+        response: parsedFeedback.feedback,
+        updatedStory: updatedStory
       });
     } catch (error) {
       console.error('Error parsing JSON response:', error);
-      // Fallback to returning the raw response
-      return NextResponse.json({ response: responseContent });
+      return NextResponse.json({ 
+        response: 'Failed to parse feedback',
+        updatedStory: updatedStory 
+      });
     }
   } catch (error) {
     console.error('Error in chat API route:', error);
@@ -107,17 +135,10 @@ function generateSystemPrompt(profile: Record<string, unknown>, topic: string): 
   const starEvaluationInstructions = `
   You must return your response in JSON format with the following structure:
 {
-  "updatedStory": string
   "feedback": string
 }
 
-Where:
-- updatedStory is the updated final version of the user's story, based on the entire conversation history and all previous improvements. 
-  Each time the user sends a message, you should generate an improved version of their story that incorporates all feedback and changes so far. 
-  Only use the user input to get the update story. Do not use your messages. 
-  Do not add anything to the story besides what user input.
-
-- feedback is your detailed evaluation and suggestions for improvement
+Where feedback is your detailed evaluation and suggestions for improvement.
 
 In your feedback text, clearly indicate which parts of the STAR framework are present or missing, and provide specific suggestions for improvement.
 `;
@@ -135,19 +156,15 @@ ${additionalNotes ? `ADDITIONAL NOTES: ${additionalNotes}` : ''}
 ${starEvaluationInstructions}
 
 INSTRUCTIONS:
-1. First, listen to the candidate's response to the behavioral question.
-2. Evaluate their response based on the STAR method (Situation, Task, Action, Result).
-3. Provide constructive feedback on:
+1. Evaluate the candidate's response based on the STAR method (Situation, Task, Action, Result).
+2. Provide constructive feedback on:
    - Structure and completeness of their response
    - Relevance to the question asked
    - Clarity and conciseness
    - Quantifiable results or impact where applicable
    - Professional language and delivery
-4. Ask follow-up questions to help them improve areas that are weak or missing.
-5. Be encouraging but honest - point out strengths while suggesting improvements.
-6. Keep your responses concise and focused on helping them improve.
-7. Always maintain continuity by considering the entire conversation history when generating the updated story.
-8. Each time the user sends a message, generate an improved version of their story that incorporates all previous feedback and changes.
+3. Be encouraging but honest - point out strengths while suggesting improvements.
+4. Keep your responses concise and focused on helping them improve.
 
 Your goal is to help them craft better stories for their behavioral interviews that highlight their relevant skills and experiences.
   `;
