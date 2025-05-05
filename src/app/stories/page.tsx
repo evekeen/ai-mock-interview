@@ -189,11 +189,7 @@ export default function StoriesPage() {
                                 href={`/practice/${topic.id}`}
                                 passHref
                             >
-                                <Button 
-                                    variant="outline" 
-                                    className="cursor-pointer hover:bg-gray-100"
-                                    style={{ borderColor: topic.color, color: topic.color }}
-                                >
+                                <Button variant="outline" className="cursor-pointer">
                                     Help Me Brainstorm
                                 </Button>
                             </Link>
@@ -203,12 +199,7 @@ export default function StoriesPage() {
                                 )}`}
                                 passHref
                             >
-                                <Button 
-                                    className="cursor-pointer"
-                                    style={{ backgroundColor: topic.color }}
-                                >
-                                    Practice the Question
-                                </Button>
+                                <Button className="cursor-pointer">Practice the Question</Button>
                             </Link>
                         </CardFooter>
                     </Card>
