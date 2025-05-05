@@ -9,12 +9,14 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { storyApi } from "../../../lib/db-api";
 import { Story as BaseStory } from "../../../types";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    timestamp: Date;
 };
 
 // Extend the imported Story type with our needed properties
@@ -25,86 +27,98 @@ interface Story extends BaseStory {
 }
 
 interface UserProfile {
-  name: string;
-  role?: string;
-  experience?: string;
-  skills?: string[];
-  background?: string;
-  interests?: string[];
-  goals?: string[];
-  education?: string;
-  projects?: string[];
-  achievements?: string[];
+    name: string;
+    role?: string;
+    experience?: string;
+    skills?: string[];
+    background?: string;
+    interests?: string[];
+    goals?: string[];
+    education?: string;
+    projects?: string[];
+    achievements?: string[];
 }
 
 interface CategoryScore {
-  category: string;
-  score: number;
-  strengths: string;
-  improvements: string;
-  explanation: string;
+    category: string;
+    score: number;
+    strengths: string;
+    improvements: string;
+    explanation: string;
 }
 
 interface FeedbackData {
-  categoryScores: CategoryScore[];
-  totalScore: number;
-  scoreBand: string;
-  summary: string;
+    categoryScores: CategoryScore[];
+    totalScore: number;
+    scoreBand: string;
+    summary: string;
 }
 
 const getQuestionForTopic = (topicId: string): string => {
-  const questions: Record<string, string> = {
-    conflict: "Tell me about a time when you had to resolve a conflict within your team. What was your approach, and what was the outcome?",
-    leadership: "Describe a situation where you had to lead a team through a difficult situation. What challenges did you face and how did you overcome them?",
-    challenge: "Share an example of a challenging project you worked on. What obstacles did you encounter and how did you handle them?",
-    failure: "Tell me about a time you failed at something. What happened, and what did you learn from the experience?",
-    teamwork: "Describe a situation where you had to work effectively as part of a team. What was your role, and how did you contribute to the team's success?",
-    success: "Share an accomplishment you're particularly proud of. What was the situation, and how did you achieve this success?",
-    pressure: "Tell me about a time when you had to work under significant pressure or tight deadlines. How did you handle it?",
-    adaptability: "Describe a situation where you had to adapt to a significant change. How did you approach it?",
-    problem: "Share an example of a difficult problem you solved. What was your approach to finding a solution?"
-  };
-  
-  return questions[topicId] || "Tell me about a situation where you demonstrated strong skills in this area.";
+    const questions: Record<string, string> = {
+        conflict:
+            "Tell me about a time when you had to resolve a conflict within your team. What was your approach, and what was the outcome?",
+        leadership:
+            "Describe a situation where you had to lead a team through a difficult situation. What challenges did you face and how did you overcome them?",
+        challenge:
+            "Share an example of a challenging project you worked on. What obstacles did you encounter and how did you handle them?",
+        failure:
+            "Tell me about a time you failed at something. What happened, and what did you learn from the experience?",
+        teamwork:
+            "Describe a situation where you had to work effectively as part of a team. What was your role, and how did you contribute to the team's success?",
+        success:
+            "Share an accomplishment you're particularly proud of. What was the situation, and how did you achieve this success?",
+        pressure:
+            "Tell me about a time when you had to work under significant pressure or tight deadlines. How did you handle it?",
+        adaptability:
+            "Describe a situation where you had to adapt to a significant change. How did you approach it?",
+        problem:
+            "Share an example of a difficult problem you solved. What was your approach to finding a solution?",
+    };
+
+    return (
+        questions[topicId] ||
+        "Tell me about a situation where you demonstrated strong skills in this area."
+    );
 };
 
 const topicNames: Record<string, string> = {
-  conflict: "Conflict Resolution",
-  leadership: "Leadership Experience",
-  challenge: "Challenging Work",
-  failure: "Handling Failure",
-  teamwork: "Teamwork",
-  success: "Success Stories",
-  pressure: "Working Under Pressure",
-  adaptability: "Adaptability to Change",
-  problem: "Problem Solving"
+    conflict: "Conflict Resolution",
+    leadership: "Leadership Experience",
+    challenge: "Challenging Work",
+    failure: "Handling Failure",
+    teamwork: "Teamwork",
+    success: "Success Stories",
+    pressure: "Working Under Pressure",
+    adaptability: "Adaptability to Change",
+    problem: "Problem Solving",
 };
 
 // Helper to get the name title cased and formatted
 const getCategoryTitle = (category: string) => {
-  // Add spaces before capitals and title case
-  return category
-      .replace(/([A-Z])/g, " $1")
-      .trim()
-      .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+    // Add spaces before capitals and title case
+    return category
+        .replace(/([A-Z])/g, " $1")
+        .trim()
+        .split(" ")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
 };
 
 // Helper to get color based on score
 const getScoreColor = (score: number) => {
-  if (score <= 5) return "bg-red-500";
-  if (score <= 10) return "bg-orange-500";
-  if (score <= 15) return "bg-yellow-500";
-  return "bg-green-500";
+    if (score <= 5) return "bg-red-500";
+    if (score <= 10) return "bg-orange-500";
+    if (score <= 15) return "bg-yellow-500";
+    return "bg-green-500";
 };
 
 // Helper to get text color based on score
 const getScoreTextColor = (score: number) => {
-  if (score <= 5) return "text-red-500";
-  if (score <= 10) return "text-orange-500";
-  if (score <= 15) return "text-yellow-500";
-  return "text-green-500";
+    if (score <= 5) return "text-red-500";
+    if (score <= 10) return "text-orange-500";
+    if (score <= 15) return "text-yellow-500";
+    return "text-green-500";
 };
 
 export default function PracticePage() {
@@ -240,37 +254,69 @@ export default function PracticePage() {
     }
   };
 
-  const saveStory = async (storyContent: string) => {
-    if (!userId || !storyContent.trim()) return;
-    
-    setIsSaving(true);
-    try {
-      if (currentStory) {
-        // Update existing story
-        const updatedStory = await storyApi.updateStory(currentStory.id, {
-          bullet_points: [storyContent],
-          title: topicName,
-        });
-        setCurrentStory(updatedStory);
-      } else {
-        // Create new story
-        const newStory = await storyApi.createStory(
-          userId,
-          topicId,
-          topicName,
-          [storyContent]
-        );
-        setCurrentStory(newStory);
-      }
-      
-      // Removed automatic analysis here
-      
-    } catch (error) {
-      console.error("Error saving story:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    // Save the story (draft)
+    const saveStory = async (storyContent: string) => {
+        if (!userId || !storyContent.trim()) return;
+
+        setIsSaving(true);
+        try {
+            let savedStory:
+                | Pick<
+                      Story,
+                      | "id"
+                      | "title"
+                      | "user_id"
+                      | "bullet_points"
+                      | "metadata"
+                      | "category"
+                  > // Use specific fields
+                | undefined;
+
+            if (currentStory?.id) {
+                // Update existing story
+                savedStory = await storyApi.updateStory(currentStory.id, {
+                    bullet_points: [storyContent],
+                    title: topicName, // Update title if needed
+                    metadata: { isFinal: false }, // Mark as draft
+                    category: topicId, // Ensure category is set
+                });
+                console.log("Story updated:", savedStory);
+            } else {
+                // Create new story
+                savedStory = await storyApi.createStory({
+                    title: topicName,
+                    user_id: userId,
+                    bullet_points: [storyContent],
+                    metadata: { isFinal: false }, // Mark as draft
+                    category: topicId,
+                });
+                console.log("Story created:", savedStory);
+            }
+
+            if (savedStory) {
+                // Explicitly create a new Story object for the state update
+                const updatedCurrentStory: Story = {
+                    id: savedStory.id,
+                    title: savedStory.title,
+                    user_id: savedStory.user_id,
+                    bullet_points: savedStory.bullet_points,
+                    metadata: savedStory.metadata,
+                    category: savedStory.category,
+                    created_at:
+                        currentStory?.created_at || new Date().toISOString(), // Keep original or set new
+                    updated_at: new Date().toISOString(), // Set current time
+                };
+                setCurrentStory(updatedCurrentStory);
+                // Provide user feedback (e.g., toast notification)
+                console.log("Draft saved successfully!");
+            }
+        } catch (error) {
+            console.error("Error saving story draft:", error);
+            // Provide error feedback
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -444,62 +490,49 @@ export default function PracticePage() {
     setShowClearDialog(false);
   };
 
-  return (
-    <div className="container mx-auto p-4 md:p-8 max-w-7xl">
-      <div className="mb-6">
-        <Link 
-          href="/stories"
-          className="text-blue-600 hover:underline inline-flex items-center mb-4"
-        >
-          ← Back to Topics
-        </Link>
-        <h1 className="text-2xl md:text-3xl font-bold">{topicName}</h1>
-        <p className="text-gray-600 mt-1">Practice your interview response with AI feedback</p>
-      </div>
-      
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Main chat panel */}
-        <div className="lg:w-2/3">
-          <div className="bg-white shadow-md rounded-lg overflow-hidden">
-            
-            {/* Chat messages */}
-            <div className="h-[60vh] overflow-y-auto p-4 md:p-6 bg-gray-50">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`mb-4 max-w-[85%] ${
-                    message.role === "user" ? "ml-auto" : "mr-auto"
-                  }`}
-                >
-                  <div
-                    className={`rounded-lg p-3 ${
-                      message.role === "user"
-                        ? "bg-blue-600 text-white"
-                        : "bg-white border border-gray-200"
-                    }`}
-                  >
-                    {message.role === "user" ? (
-                      <p>{message.content}</p>
-                    ) : (
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
-                    )}
-                  </div>
-                  <div
-                    className={`text-xs mt-1 text-gray-500 ${
-                      message.role === "user" ? "text-right" : ""
-                    }`}
-                  >
-                    {message.role === "user" ? "You" : "AI Coach"} • {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex items-center space-x-2 mb-4 max-w-[85%]">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex space-x-2">
-                      <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                      <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+    return (
+        <div className="container mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-8">
+            {/* Left Panel: Story Input & Feedback */}
+            <div className="md:w-1/2 flex flex-col">
+                <h1 className="text-2xl font-bold mb-4">
+                    Practice: {topicName}
+                </h1>
+                <Card className="p-6 mb-6 bg-blue-50 border-blue-200">
+                    <p className="font-semibold">Interview Question:</p>
+                    <p>{question}</p>
+                </Card>
+
+                <div className="flex-1 flex flex-col mb-4">
+                    <label htmlFor="storyInput" className="font-semibold mb-2">
+                        Your Story Draft:
+                    </label>
+                    <Textarea
+                        id="storyInput"
+                        value={input} // Use input state for textarea
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="Draft your response here using the STAR method (Situation, Task, Action, Result)..."
+                        className="flex-1 text-base resize-none mb-4"
+                        rows={15} // Adjust rows as needed
+                    />
+                    <div className="flex justify-between items-center">
+                        {/* Clear Button */}
+                        <Button
+                            variant="destructive"
+                            onClick={() => setShowClearDialog(true)}
+                            size="sm"
+                        >
+                            {/* <Trash2 className="mr-2 h-4 w-4" />  */} Clear
+                            Draft
+                        </Button>
+                        {/* Save Draft Button */}
+                        <Button
+                            onClick={() => saveStory(input)}
+                            disabled={isSaving || !input.trim()}
+                            size="sm"
+                        >
+                            {/* <Save className="mr-2 h-4 w-4" /> */}
+                            {isSaving ? "Saving..." : "Save Draft"}
+                        </Button>
                     </div>
                   </div>
                   <div className="text-xs text-gray-500">AI Coach is typing...</div>
@@ -573,157 +606,208 @@ export default function PracticePage() {
                 <div className="text-xs text-green-600 font-medium mb-3">
                   ✓ Final Version
                 </div>
-              )}
-              
-              <div className="flex justify-between mt-3">                
-                {currentStory && (
-                  <button
-                    onClick={() => setShowClearDialog(true)}
-                    className="px-3 py-1.5 border border-red-600 text-red-600 text-sm rounded hover:bg-red-50 transition-colors"
-                    disabled={isLoading || isSaving}
-                  >
-                    Start Over
-                  </button>
-                )}
-              </div>
-            </Card>
-          )}
 
-          {/* Feedback Analysis */}
-          {isAnalyzing ? (
-            <div className="bg-white shadow-md rounded-lg p-4 mb-6 relative overflow-hidden">
-              <div className="flex items-center justify-center p-8">
-                <div className="relative">                  
-                  {/* Floating particles */}
-                  <div className="absolute top-0 left-0 w-full h-full">
-                    {[...Array(8)].map((_, i) => (
-                      <div 
-                        key={i}
-                        className="absolute w-2 h-2 bg-white rounded-full animate-ping"
-                        style={{
-                          top: `${Math.random() * 100}%`,
-                          left: `${Math.random() * 100}%`,
-                          animationDelay: `${Math.random() * 2}s`,
-                          animationDuration: `${1 + Math.random() * 3}s`
-                        }}
-                      ></div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="text-center mt-2">
-                <p className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-500 font-bold animate-pulse">Analyzing your story with AI magic</p>
-                <p className="text-xs text-gray-500 mt-1">Creating comprehensive feedback...</p>
-              </div>
-            </div>
-          ) : feedback ? (
-            <div className="bg-white shadow-md rounded-lg overflow-hidden mb-6">
-              <div className="p-4 bg-gray-100 border-b">
-                <h3 className="font-semibold">Story Analysis</h3>
-                <div className="flex items-center mt-2">
-                  <div className="font-bold text-xl mr-2">{feedback.totalScore}</div>
-                  <div className="text-xs text-gray-500">/100</div>
-                  <div className="ml-auto text-sm font-medium">
-                    {feedback.scoreBand}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-4">
-                <div className="space-y-4">
-                  {feedback.categoryScores.map((category) => (
-                    <div key={category.category}>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-medium">
-                          {getCategoryTitle(category.category)}
-                        </span>
-                        <span
-                          className={`text-xs font-medium ${getScoreTextColor(
-                            category.score
-                          )}`}
-                        >
-                          {category.score}/20
-                        </span>
-                      </div>
-                      <Progress
-                        value={category.score * 5}
-                        className="h-1 mb-1"
-                        indicatorClassName={getScoreColor(category.score)}
-                      />
+                {/* Feedback Display Area */}
+                {isAnalyzing && (
+                    <div className="text-center p-4">
+                        <p>Analyzing feedback...</p>
                     </div>
-                  ))}
-                </div>
-                
-                <div className="mt-4">
-                  <div className="text-xs text-gray-700">
-                    {typeof feedback.summary === 'string' ? feedback.summary.split('\n\n')[0] : ''}
-                  </div>
-                  
-                  <button
-                    className="text-xs text-blue-600 hover:underline mt-2"
-                    onClick={() => {
-                      if (feedback.categoryScores.length > 0) {
-                        const strengths = feedback.categoryScores[0].strengths;
-                        const improvements = feedback.categoryScores[0].improvements;
-                        
-                        // Add a message with the detailed feedback
-                        setMessages(prev => [
-                          ...prev,
-                          {
-                            id: Date.now().toString(),
-                            role: "assistant",
-                            content: `Here's some detailed feedback on your story:\n\n**Strengths:**\n${strengths}\n\n**Areas for improvement:**\n${improvements}`,
-                            timestamp: new Date()
-                          }
-                        ]);
-                      }
-                    }}
-                  >
-                    Show detailed feedback
-                  </button>
-                </div>
-              </div>
+                )}
+                {feedback && (
+                    <div className="mt-6">
+                        <h2 className="text-xl font-bold mb-4">
+                            Feedback Analysis
+                        </h2>
+                        <div className="space-y-4">
+                            {/* Overall Score */}
+                            <Card className="p-4">
+                                <div className="flex justify-between items-center mb-2">
+                                    <h3 className="font-semibold">
+                                        Overall Score
+                                    </h3>
+                                    <span className="font-bold text-lg">
+                                        {feedback.totalScore}/100
+                                    </span>
+                                </div>
+                                <Progress
+                                    value={feedback.totalScore}
+                                    className="h-2"
+                                />
+                                <p className="text-sm text-gray-600 mt-2">
+                                    {feedback.scoreBand}
+                                </p>
+                            </Card>
+                            {/* Category Scores */}
+                            {feedback.categoryScores.map((category) => (
+                                <Card key={category.category} className="p-4">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <h4 className="font-medium">
+                                            {getCategoryTitle(
+                                                category.category
+                                            )}
+                                        </h4>
+                                        <span
+                                            className={`font-semibold ${getScoreTextColor(
+                                                category.score
+                                            )}`}
+                                        >
+                                            {category.score}/20
+                                        </span>
+                                    </div>
+                                    <Progress
+                                        value={category.score * 5}
+                                        className="h-1 mb-3"
+                                        indicatorClassName={getScoreColor(
+                                            category.score
+                                        )}
+                                    />
+                                    <div className="text-xs space-y-2">
+                                        <p>
+                                            <strong>Strengths:</strong>{" "}
+                                            {category.strengths}
+                                        </p>
+                                        <p>
+                                            <strong>Improvements:</strong>{" "}
+                                            {category.improvements}
+                                        </p>
+                                    </div>
+                                </Card>
+                            ))}
+                            {/* Summary */}
+                            <Card className="p-4">
+                                <h3 className="font-semibold mb-2">Summary</h3>
+                                <ReactMarkdown className="prose prose-sm max-w-none">
+                                    {feedback.summary}
+                                </ReactMarkdown>
+                            </Card>
+                        </div>
+                    </div>
+                )}
             </div>
-          ) : (
-            currentStory?.bullet_points && currentStory.bullet_points.length > 0 && (
-              <div className="bg-white shadow-md rounded-lg p-4 mb-6 text-center">
-                <p className="text-sm text-gray-600">
-                  Your story will be analyzed when you send a message and the story updates.
-                </p>
-              </div>
-            )
-          )}
-        </div>
-      </div>          
 
-      {/* Clear story dialog */}
-      {showClearDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-semibold mb-4">Clear Story</h3>
-            <p className="mb-4 text-sm text-gray-600">
-              Are you sure you want to clear your story? This action cannot be undone.
-            </p>
-            
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowClearDialog(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmClear}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                disabled={isSaving}
-              >
-                {isSaving ? "Clearing..." : "Clear Story"}
-              </button>
+            {/* Right Panel: Chat Interaction (If needed) */}
+            {/* This section can be used for a more traditional chatbot if required */}
+            {/* For now, it might be less relevant if focus is on story drafting/analysis */}
+            {/* 
+            <div className="md:w-1/2 flex flex-col border rounded-lg shadow-sm">
+                <div className="p-4 border-b font-semibold bg-gray-50 rounded-t-lg">
+                    AI Assistant
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white">
+                    {messages.map((message) => (
+                        <div
+                            key={message.id}
+                            className={`flex ${
+                                message.role === "user"
+                                    ? "justify-end"
+                                    : "justify-start"
+                            }`}
+                        >
+                            <div
+                                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-md ${
+                                    message.role === "user"
+                                        ? "bg-blue-500 text-white"
+                                        : "bg-gray-100 text-gray-800"
+                                }`}
+                            >
+                                <ReactMarkdown className="prose prose-sm max-w-none break-words">
+                                    {message.content}
+                                </ReactMarkdown>
+                            </div>
+                        </div>
+                    ))}
+                    {isLoading && (
+                        <div className="flex justify-start">
+                            <div className="px-4 py-2 rounded-lg shadow-md bg-gray-100 text-gray-800 animate-pulse">
+                                Thinking...
+                            </div>
+                        </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                </div>
+                <form
+                    onSubmit={handleSendMessage} // This needs implementation
+                    className="p-4 border-t bg-gray-50 rounded-b-lg flex items-center"
+                >
+                    <Input
+                        value={input} // Should this be a separate input from story draft?
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="Ask for specific feedback or help..." // Placeholder adjusted
+                        className="flex-1 mr-2"
+                        disabled={isLoading}
+                    />
+                    <Button type="submit" disabled={isLoading || !input.trim()}>
+                        Send
+                    </Button>
+                </form>
             </div>
-          </div>
+            */}
+
+            {/* Clear Confirmation Dialog */}
+            {showClearDialog && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <Card className="w-full max-w-md p-6">
+                        <CardHeader>
+                            <CardTitle className="flex items-center">
+                                {/* <AlertCircle className="mr-2 h-5 w-5 text-yellow-500" /> */}{" "}
+                                Confirm Clear Draft
+                            </CardTitle>
+                            <CardDescription>
+                                Are you sure you want to clear your current
+                                draft?
+                                {currentStory &&
+                                currentStory.metadata?.isFinal !== true
+                                    ? " If you confirm, the saved draft will also be deleted."
+                                    : " This action cannot be undone."}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardFooter className="flex justify-end space-x-3 mt-4">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowClearDialog(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={handleConfirmClear}
+                            >
+                                Confirm Clear
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                </div>
+            )}
+
+            {/* --- Commented out Save Dialog --- */}
+            {/* {showSaveDialog && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <Card className="w-full max-w-md p-6">
+                        <CardHeader>
+                            <CardTitle className="flex items-center">
+                                <AlertCircle className="mr-2 h-5 w-5 text-yellow-500" /> Confirm Save Final Story?
+                            </CardTitle>
+                            <CardDescription>
+                                Saving this as final means it will be considered your primary answer for this topic.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                             <p className="text-sm font-medium mb-2">Final Story:</p>
+                            <div className="max-h-32 overflow-y-auto p-2 border rounded bg-gray-50 text-sm">
+                                {finalStoryToSave}
+                            </div>
+                        </CardContent>
+                        <CardFooter className="flex justify-end space-x-3">
+                            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleConfirmSave} disabled={isSaving}>
+                                {isSaving ? "Saving..." : "Confirm & Save Final"}
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                </div>
+            )} */}
         </div>
-      )}
-    </div>
-  );
-} 
+    );
+}

@@ -119,11 +119,11 @@ export default function StoriesPage() {
                             </p>
                         </CardContent>
                         <CardFooter className="flex justify-between">
-                            <Link
-                                href={`/practice/${topic.id}`}
-                                passHref
-                            >
-                                <Button variant="outline" className="cursor-pointer">
+                            <Link href={`/practice/${topic.id}`} passHref>
+                                <Button
+                                    variant="outline"
+                                    className="cursor-pointer"
+                                >
                                     Help Me Brainstorm
                                 </Button>
                             </Link>
@@ -133,7 +133,9 @@ export default function StoriesPage() {
                                 )}`}
                                 passHref
                             >
-                                <Button className="cursor-pointer">Practice the Question</Button>
+                                <Button className="cursor-pointer">
+                                    Practice the Question
+                                </Button>
                             </Link>
                         </CardFooter>
                     </Card>

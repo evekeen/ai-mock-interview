@@ -211,26 +211,60 @@ export default function VoiceAssistant({ cameraEnabled }: VoiceAssistantProps) {
                 console.log("🔔 DataChannel is open!");
                 setConnected(true);
                 setLoading(false);
-                // Send initial instruction with the selected topic
-                const initialInstruction = `You are a mock interviewer. Start by asking me the question: 'Tell me about a time you handled ${topic}.' Then, ask relevant follow-up questions based on my response using the STAR method context if applicable. Keep your responses concise and conversational.`;
-                dataChannel.send(
-                    JSON.stringify({
+
+                // Send session update to explicitly enable transcription
+                const updatePayload = {
+                    type: "session.update",
+                    session: {
+                        modalities: ["text", "audio"], // Ensure both are specified
+                        input_audio_format: "pcm16",
+                        output_audio_format: "pcm16",
+                        input_audio_transcription: {
+                            model: "whisper-1", // Explicitly set whisper
+                        },
+                        // Include desired turn detection settings
+                        turn_detection: {
+                            type: "server_vad", // Using server VAD
+                            threshold: 0.5,
+                            prefix_padding_ms: 300,
+                            silence_duration_ms: 1000, // Increased silence duration
+                            create_response: true,
+                        },
+                    },
+                };
+                console.log(
+                    "Sending session.update to enable transcription:",
+                    JSON.stringify(updatePayload)
+                );
+                dataChannel.send(JSON.stringify(updatePayload));
+
+                // Send initial instruction with the selected topic (with a small delay)
+                setTimeout(() => {
+                    const initialInstruction = `You are a mock interviewer. Start by asking me the question: 'Tell me about a time you handled ${topic}.' Then, ask relevant follow-up questions based on my response using the STAR method context if applicable. Keep your responses concise and conversational.`;
+                    const instructionPayload = {
                         type: "session.update",
                         session: {
                             instructions: initialInstruction,
                         },
-                    })
-                );
-                // Add initial message to display the question
-                setMessages([
-                    {
-                        from: "assistant",
-                        text: `Tell me about a time you handled ${topic}.`,
-                    },
-                ]);
-                // Set interviewer to speaking initially
-                setIsInterviewerSpeaking(true);
-                setTimeout(() => setIsInterviewerSpeaking(false), 5000);
+                    };
+                    console.log(
+                        "Sending session.update for instructions:",
+                        JSON.stringify(instructionPayload)
+                    );
+                    dataChannel.send(JSON.stringify(instructionPayload));
+
+                    // Add initial message to local state (this doesn't affect server)
+                    setMessages([
+                        {
+                            from: "assistant",
+                            text: `Tell me about a time you handled ${topic}.`,
+                        },
+                    ]);
+                    // Set interviewer to speaking initially
+                    setIsInterviewerSpeaking(true);
+                    // Assume initial prompt takes some time to be spoken
+                    setTimeout(() => setIsInterviewerSpeaking(false), 5000);
+                }, 100); // 100ms delay
             });
 
             console.log(
@@ -238,7 +272,11 @@ export default function VoiceAssistant({ cameraEnabled }: VoiceAssistantProps) {
             );
         } catch (err: Error | unknown) {
             console.error("Initialization failed:", err);
-            setError(`Connection failed: ${err instanceof Error ? err.message : 'Connection error'}`);
+            setError(
+                `Connection failed: ${
+                    err instanceof Error ? err.message : "Connection error"
+                }`
+            );
             setLoading(false);
             cleanupConnection();
         }
@@ -247,90 +285,147 @@ export default function VoiceAssistant({ cameraEnabled }: VoiceAssistantProps) {
     // Function to handle messages from the server via DataChannel
     function handleServerEvent(e: MessageEvent) {
         try {
-            // console.log('Raw server event:', e.data);
+            console.log("[DEBUG] Raw server event:", e.data);
             const event = JSON.parse(e.data);
-            // console.log('Parsed server event:', event);
+            console.log("[DEBUG] Parsed server event:", event);
 
             switch (event.type) {
-                case "response.text.delta": // User's transcribed speech delta
-                    setMessages((prev) => {
+                case "conversation.item.input_audio_transcription.delta":
+                    console.log(
+                        "[DEBUG] User Transcription Delta Received:",
+                        event.delta
+                    );
+                    setMessages((prev: Message[]) => {
+                        console.log(
+                            "[DEBUG] User Transcription Delta - Prev State:",
+                            JSON.parse(JSON.stringify(prev))
+                        );
                         const lastMsg = prev[prev.length - 1];
+                        let newState: Message[];
                         if (lastMsg?.from === "user") {
                             const updatedText = lastMsg.text + event.delta;
-                            return [
+                            newState = [
                                 ...prev.slice(0, -1),
                                 { from: "user", text: updatedText },
                             ];
                         } else {
-                            return [
+                            newState = [
                                 ...prev,
                                 { from: "user", text: event.delta },
                             ];
                         }
+                        return newState;
                     });
                     // User is speaking, interviewer is not
                     setIsInterviewerSpeaking(false);
                     break;
 
-                case "response.text.done": // User's speech transcription complete
-                    // User has finished speaking
+                case "conversation.item.input_audio_transcription.completed":
+                    console.log(
+                        "[DEBUG] User Transcription Completed Event:",
+                        event
+                    );
+                    const userFinalTranscript = event.transcript;
+                    if (userFinalTranscript) {
+                        console.log(
+                            "[DEBUG] User Transcription Completed - Final Transcript Found:",
+                            userFinalTranscript
+                        );
+                        setMessages((prev: Message[]) => {
+                            console.log(
+                                "[DEBUG] User Transcription Completed - Prev State:",
+                                JSON.parse(JSON.stringify(prev))
+                            );
+                            const lastMsg = prev[prev.length - 1];
+                            let newState: Message[];
+                            if (lastMsg?.from === "user") {
+                                // Update the last user message with the final complete transcript
+                                newState = [
+                                    ...prev.slice(0, -1),
+                                    { from: "user", text: userFinalTranscript },
+                                ];
+                            } else {
+                                // If no user delta was received before, add the full transcript
+                                newState = [
+                                    ...prev,
+                                    { from: "user", text: userFinalTranscript },
+                                ];
+                            }
+                            return newState;
+                        });
+                    }
                     break;
 
                 case "response.audio.delta": // Assistant's audio speech delta (binary)
-                    // Set interviewer as speaking when audio is received
                     setIsInterviewerSpeaking(true);
                     break;
 
                 case "response.text.delta.assistant": // Assistant's text response delta
-                    setMessages((prev) => {
+                    console.log(
+                        "[DEBUG] Assistant Delta Received:",
+                        event.delta
+                    );
+                    setMessages((prev: Message[]) => {
+                        console.log(
+                            "[DEBUG] Assistant Delta - Prev State:",
+                            JSON.parse(JSON.stringify(prev))
+                        );
                         const lastMsg = prev[prev.length - 1];
+                        let newState: Message[];
                         if (lastMsg?.from === "assistant") {
                             const updatedText = lastMsg.text + event.delta;
-                            return [
+                            newState = [
                                 ...prev.slice(0, -1),
                                 { from: "assistant", text: updatedText },
                             ];
                         } else {
-                            // Start a new assistant message only if the delta is not empty
-                            return event.delta.trim()
+                            newState = event.delta.trim()
                                 ? [
                                       ...prev,
                                       { from: "assistant", text: event.delta },
                                   ]
                                 : prev;
                         }
+                        return newState;
                     });
-                    // Interviewer is speaking
                     setIsInterviewerSpeaking(true);
                     break;
 
                 case "response.done": // Assistant's full response complete
-                    // Finalize the last assistant message if needed, using transcript if available
+                    console.log("[DEBUG] Assistant Done Event:", event);
                     const fullTranscript =
                         event.response?.output?.[0]?.content?.[0]?.transcript;
                     if (fullTranscript) {
-                        setMessages((prev) => {
+                        console.log(
+                            "[DEBUG] Assistant Done - Full Transcript Found:",
+                            fullTranscript
+                        );
+                        setMessages((prev: Message[]) => {
+                            console.log(
+                                "[DEBUG] Assistant Done - Prev State:",
+                                JSON.parse(JSON.stringify(prev))
+                            );
                             const lastMsg = prev[prev.length - 1];
+                            let newState: Message[];
                             if (lastMsg?.from === "assistant") {
-                                return [
+                                newState = [
                                     ...prev.slice(0, -1),
                                     { from: "assistant", text: fullTranscript },
                                 ];
-                            }
-                            // Only add if it wasn't already added via deltas and is not empty
-                            else if (
+                            } else if (
                                 fullTranscript.trim() &&
                                 (!lastMsg || lastMsg.text !== fullTranscript)
                             ) {
-                                return [
+                                newState = [
                                     ...prev,
                                     { from: "assistant", text: fullTranscript },
                                 ];
+                            } else {
+                                newState = prev; // No change needed if already handled by deltas
                             }
-                            return prev; // No change needed
+                            return newState;
                         });
                     }
-                    // Interviewer is no longer speaking
                     setIsInterviewerSpeaking(false);
                     console.log("Assistant response done.");
                     break;
@@ -346,7 +441,10 @@ export default function VoiceAssistant({ cameraEnabled }: VoiceAssistantProps) {
                     break;
 
                 default:
-                    console.log("Unhandled server event type:", event.type);
+                    console.log(
+                        `[DEBUG] Unhandled server event type: ${event.type}`,
+                        event
+                    );
                     break;
             }
         } catch (err) {
@@ -365,6 +463,11 @@ export default function VoiceAssistant({ cameraEnabled }: VoiceAssistantProps) {
 
         // Save transcript to localStorage if there are messages
         if (messages.length > 0) {
+            // Log the final messages state before saving
+            console.log(
+                "[DEBUG] Final messages state before saving:",
+                JSON.parse(JSON.stringify(messages))
+            );
             const conversationData = {
                 topic: topic,
                 transcript: messages,
@@ -376,7 +479,6 @@ export default function VoiceAssistant({ cameraEnabled }: VoiceAssistantProps) {
             );
 
             // Optionally redirect to the feedback page
-            // Note: Using window.location instead of router to ensure full page reload
             window.location.href = "/feedback";
         }
 

@@ -89,6 +89,14 @@ export default function FeedbackPage() {
         setLoading(false);
     }, []);
 
+    // Automatically trigger analysis when transcript data is loaded and feedback is not present
+    useEffect(() => {
+        if (transcriptData && !feedback && !analyzing && !error) {
+            analyzeInterview();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [transcriptData, feedback, analyzing, error]); // Dependencies ensure this runs when needed
+
     // Animate total score filling when feedback is loaded
     useEffect(() => {
         if (feedback) {
@@ -139,10 +147,12 @@ export default function FeedbackPage() {
 
             const data = await response.json();
             setFeedback(data);
-        } catch (e: Error | unknown) {
+        } catch (e: unknown) {
             console.error("Error analyzing interview:", e);
             setError(
-                e instanceof Error ? e.message : "An error occurred while analyzing your interview."
+                e instanceof Error
+                    ? e.message
+                    : "An error occurred while analyzing your interview."
             );
         } finally {
             setAnalyzing(false);
@@ -202,37 +212,6 @@ export default function FeedbackPage() {
 
     return (
         <div className="container mx-auto p-4 md:p-8">
-            <h1 className="text-3xl font-bold mb-6">Interview Feedback</h1>
-
-            {/* Topic Info */}
-            <div className="mb-8">
-                <h2 className="text-xl font-semibold mb-2">Interview Topic</h2>
-                <Card className="p-4">
-                    <p className="font-medium">{transcriptData.topic}</p>
-                    <p className="text-sm text-gray-500 mt-2">
-                        Completed on{" "}
-                        {new Date(transcriptData.timestamp).toLocaleString()}
-                    </p>
-                </Card>
-            </div>
-
-            {/* Analysis Button (if not yet analyzed) */}
-            {!feedback && !analyzing && (
-                <div className="mb-8">
-                    <Button
-                        onClick={analyzeInterview}
-                        className="text-lg py-6 px-8"
-                        size="lg"
-                    >
-                        Analyze My Interview
-                    </Button>
-                    <p className="text-sm text-gray-500 mt-2">
-                        This will use AI to evaluate your interview performance
-                        across 5 key dimensions.
-                    </p>
-                </div>
-            )}
-
             {/* Loading state for analysis */}
             {analyzing && (
                 <div className="mb-8 p-6 border border-gray-200 rounded-lg bg-gray-50">
@@ -241,8 +220,8 @@ export default function FeedbackPage() {
                         <p>Analyzing your interview performance...</p>
                     </div>
                     <p className="text-sm text-gray-500 mt-4">
-                        This may take a moment as we&apos;re carefully evaluating
-                        your responses across multiple dimensions.
+                        This may take a moment as we&apos;re carefully
+                        evaluating your responses across multiple dimensions.
                     </p>
                 </div>
             )}
@@ -399,35 +378,37 @@ export default function FeedbackPage() {
             )}
 
             {/* Transcript Display */}
-            <div className="mt-8 mb-16">
-                <h2 className="text-xl font-semibold mb-4">
-                    Interview Transcript
-                </h2>
-                <Card className="p-4">
-                    <div className="max-h-96 overflow-y-auto">
-                        {transcriptData.transcript.map((message, i) => (
-                            <div
-                                key={i}
-                                className={`mb-2 p-2 rounded-md ${
-                                    message.from === "user"
-                                        ? "bg-blue-50 ml-8"
-                                        : "bg-gray-50 mr-8"
-                                }`}
-                            >
-                                <p>
-                                    <strong>
-                                        {message.from === "user"
-                                            ? "You"
-                                            : "Interviewer"}
-                                        :{" "}
-                                    </strong>
-                                    {message.text}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                </Card>
-            </div>
+            {transcriptData && (
+                <div className="mt-8 mb-16">
+                    <h2 className="text-xl font-semibold mb-4">
+                        Interview Transcript
+                    </h2>
+                    <Card className="p-4">
+                        <div className="max-h-96 overflow-y-auto">
+                            {transcriptData.transcript.map((message, i) => (
+                                <div
+                                    key={i}
+                                    className={`mb-2 p-2 rounded-md ${
+                                        message.from === "user"
+                                            ? "bg-blue-50 ml-8"
+                                            : "bg-gray-50 mr-8"
+                                    }`}
+                                >
+                                    <p>
+                                        <strong>
+                                            {message.from === "user"
+                                                ? "You"
+                                                : "Interviewer"}
+                                            :{" "}
+                                        </strong>
+                                        {message.text}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 }
