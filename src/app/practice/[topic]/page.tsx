@@ -27,7 +27,7 @@ interface Story extends BaseStory {
 }
 
 interface UserProfile {
-    name: string;
+    name?: string;
     role?: string;
     experience?: string;
     skills?: string[];
@@ -37,6 +37,8 @@ interface UserProfile {
     education?: string;
     projects?: string[];
     achievements?: string[];
+    resume?: string;
+    jobDescription?: string;
 }
 
 interface CategoryScore {
@@ -201,11 +203,18 @@ export default function PracticePage() {
     
     // Get user profile from localStorage
     const profileData = localStorage.getItem('userProfile');
-    if (!profileData) {
-      return;
+    if (profileData) {
+      try {
+        const profile = JSON.parse(profileData);
+        setUserProfile(profile);
+      } catch (error) {
+        console.error("Error parsing user profile:", error);
+        setUserProfile({});
+      }
+    } else {
+      setUserProfile({});
     }
     
-    setUserProfile(JSON.parse(profileData));
     loadExistingStory();
   }, [router, question, topicId, userId]);
   

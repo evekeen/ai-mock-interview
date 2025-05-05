@@ -34,7 +34,7 @@ export async function POST(req: Request) {
 
     // Parse the request body
     const body = await req.json();
-    const { messages, profile, topic } = body;
+    const { messages, profile } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Invalid messages format' }, { status: 400 });
@@ -71,7 +71,7 @@ Use the same exact wording as the user used.
     const updatedStory = storyResponse.choices[0].message.content?.trim() || "";
 
     // Generate context for the feedback AI based on user profile and topic
-    const feedbackSystemPrompt = generateSystemPrompt(profile, topic);
+    const feedbackSystemPrompt = generateSystemPrompt(profile);
 
     // Second call: Get feedback on the story
     const feedbackResponse = await openaiClient.chat.completions.create({
