@@ -202,7 +202,6 @@ export default function PracticePage() {
     // Get user profile from localStorage
     const profileData = localStorage.getItem('userProfile');
     if (!profileData) {
-      router.push('/profile');
       return;
     }
     
